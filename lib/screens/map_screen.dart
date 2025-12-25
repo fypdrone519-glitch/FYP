@@ -6,14 +6,14 @@ import '../theme/app_spacing.dart';
 import '../widgets/car_card.dart';
 import '../widgets/cars_map.dart';
 
-class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+class MapScreenContent extends StatefulWidget {
+  const MapScreenContent({super.key});
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  State<MapScreenContent> createState() => _MapScreenContentState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenContentState extends State<MapScreenContent> {
   // Sample car data
   final List<Car> _cars = [
     Car(
@@ -73,7 +73,7 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
             
-            // Top Bar with Back Button and Title
+            // Top Bar with Title and Filter
             Positioned(
               top: 0,
               left: 0,
@@ -81,7 +81,7 @@ class _MapScreenState extends State<MapScreen> {
               child: Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: AppColors.background.withValues(alpha: 0.9),
+                  color: AppColors.background,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.1),
@@ -92,14 +92,6 @@ class _MapScreenState extends State<MapScreen> {
                 ),
                 child: Row(
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.arrow_back,
-                        color: AppColors.lightText,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
                     Text(
                       'Cars on Map',
                       style: AppTextStyles.h2(context).copyWith(

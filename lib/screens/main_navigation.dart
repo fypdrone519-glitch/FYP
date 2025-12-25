@@ -1,9 +1,9 @@
-import 'package:car_listing_app/screens/home_screen_content.dart';
+import 'package:car_listing_app/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
-import 'home_screen_content.dart';
-import 'map_screen_content.dart';
+import 'home_screen.dart';
+import 'map_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -23,13 +23,14 @@ class _MainNavigationState extends State<MainNavigation> {
     const ProfileScreen(), // Placeholder for profile
   ];
 
-  final List<NavigationItem> _navigationItems = [
-    NavigationItem(Icons.home, 'Home'),
-    NavigationItem(Icons.pin_drop_outlined, 'Map'),
-    NavigationItem(Icons.receipt_long, 'Trips'),
-    NavigationItem(Icons.inbox, 'Inbox'),
-    NavigationItem(Icons.person_outline, 'Profile'),
-  ];
+final List<NavigationItem> _navigationItems = [
+  NavigationItem(Icons.home_outlined, Icons.home, 'Home'),
+  NavigationItem(Icons.pin_drop_outlined, Icons.pin_drop, 'Map'),
+  NavigationItem(Icons.directions_car_outlined, Icons.directions_car, 'Trips'),
+  NavigationItem(Icons.inbox_outlined, Icons.inbox, 'Inbox'),
+  NavigationItem(Icons.person_outline, Icons.person, 'Profile'),
+];
+
 
   @override
   Widget build(BuildContext context) {
@@ -56,11 +57,12 @@ class _MainNavigationState extends State<MainNavigation> {
                 _navigationItems.length,
                 (index) => Expanded(
                   child: _buildNavItem(
-                    _navigationItems[index].icon,
-                    _navigationItems[index].label,
-                    _currentIndex == index,
-                    index,
-                  ),
+                  _navigationItems[index].outlinedIcon,
+                  _navigationItems[index].filledIcon,
+                  _navigationItems[index].label,
+                  (_currentIndex == index),
+                  index,
+                ),
                 ),
               ),
             ),
@@ -70,56 +72,62 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  Widget _buildNavItem(
-    IconData icon,
-    String label,
-    bool isSelected,
-    int index,
-  ) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? AppColors.accent : AppColors.secondaryText,
-                size: 24,
+Widget _buildNavItem(
+  IconData outlinedIcon,
+  IconData filledIcon,
+  String label,
+  bool isSelected,
+  int index,
+) {
+  return Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: () {
+        setState(() {
+          _currentIndex = index;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? filledIcon : outlinedIcon,
+              color: isSelected
+                  ? AppColors.accent
+                  : AppColors.secondaryText,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: isSelected
+                    ? AppColors.accent
+                    : AppColors.secondaryText,
+                fontWeight:
+                    isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color:
-                      isSelected ? AppColors.accent : AppColors.secondaryText,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ],
-          ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class NavigationItem {
-  final IconData icon;
+  final IconData outlinedIcon;
+  final IconData filledIcon;
   final String label;
 
-  NavigationItem(this.icon, this.label);
+  NavigationItem(this.outlinedIcon, this.filledIcon, this.label);
 }
 
 // Placeholder screens for other tabs

@@ -5,16 +5,15 @@ import '../theme/app_text_styles.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/car_card.dart';
 import '../widgets/quick_chip.dart';
-import 'map_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class HomeScreenContent extends StatefulWidget {
+  const HomeScreenContent({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreenContent> createState() => _HomeScreenContentState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenContentState extends State<HomeScreenContent> {
   // Sample car data
   final List<Car> _cars = [
     Car(
@@ -75,20 +74,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'CarShare',
-                        style: AppTextStyles.h2(
-                          context,
-                        ).copyWith(color: AppColors.lightText),
-                      ),
-                      // Temporary test button
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const MapScreen()),
-                          );
-                        },
-                        child: const Text('Test Map'),
+                        'Veyra',
+                        style: AppTextStyles.h2(context).copyWith(
+                          color: AppColors.lightText,
+                        ),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -120,9 +109,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Find your next ride',
-                      style: AppTextStyles.h1(
-                        context,
-                      ).copyWith(color: AppColors.lightText),
+                      style: AppTextStyles.h1(context).copyWith(
+                        color: AppColors.lightText,
+                      ),
                     ),
                   ),
                 ),
@@ -152,7 +141,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               Expanded(
                                 child: TextField(
                                   decoration: InputDecoration(
-                                    hintText: 'Location, airport, or car',
+                                    prefixIcon: const Icon(
+                                      Icons.car_rental,
+                                      color: AppColors.secondaryText,
+                                    ),
+                                    hintText: 'Oshan X7, Honda Civic...',
                                     hintStyle: AppTextStyles.meta(context),
                                     border: InputBorder.none,
                                     contentPadding: const EdgeInsets.symmetric(
@@ -185,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         // Calendar and Search Button Row
                         Row(
                           children: [
-                            Flexible(
+                            Expanded(
                               child: QuickChip(
                                 icon: Icons.calendar_today,
                                 label: 'Select dates',
@@ -195,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             const SizedBox(width: AppSpacing.xs),
-                            Flexible(
+                            Expanded(
                               child: QuickChip(
                                 icon: Icons.access_time,
                                 label: 'Time',
@@ -204,7 +197,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 },
                               ),
                             ),
-                            const SizedBox(width: AppSpacing.xs),
                           ],
                         ),
                         Padding(
@@ -243,9 +235,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Scrollable Cars Near You Section (Overlay)
             DraggableScrollableSheet(
-              initialChildSize: 0.5, // Start at 60% of screen height
-              minChildSize: 0.3, // Minimum 30% of screen height
-              maxChildSize: 0.90, // Maximum 90% of screen height
+              initialChildSize: 0.4, // Start at 40% of screen height
+              minChildSize: 0.4, // Minimum 30% of screen height
+              maxChildSize: 0.90, // Maximum 95% of screen height
               builder: (context, scrollController) {
                 return Container(
                   decoration: BoxDecoration(
@@ -316,85 +308,6 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ],
-        ),
-      ),
-      // Bottom Navigation Bar
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppColors.cardSurface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Container(
-            height: 60,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Expanded(child: _buildNavItem(Icons.home, 'Home', true)),
-                Expanded(
-                  child: _buildNavItem(Icons.pin_drop_outlined, 'Map', false),
-                ),
-                Expanded(
-                  child: _buildNavItem(Icons.receipt_long, 'Trips', false),
-                ),
-                Expanded(child: _buildNavItem(Icons.inbox, 'Inbox', false)),
-                Expanded(
-                  child: _buildNavItem(Icons.person_outline, 'Profile', false),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isSelected) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          // Handle navigation
-          print('Navigation tapped: $label'); // Debug print
-          if (label == 'Map') {
-            print('Navigating to MapScreen'); // Debug print
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const MapScreen()),
-            );
-          }
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? AppColors.accent : AppColors.secondaryText,
-                size: 24,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: isSelected ? AppColors.accent : AppColors.secondaryText,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ],
-          ),
         ),
       ),
     );
