@@ -2,7 +2,6 @@ import 'package:car_listing_app/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
-import 'home_screen.dart';
 import 'map_screen.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -23,14 +22,17 @@ class _MainNavigationState extends State<MainNavigation> {
     const ProfileScreen(), // Placeholder for profile
   ];
 
-final List<NavigationItem> _navigationItems = [
-  NavigationItem(Icons.home_outlined, Icons.home, 'Home'),
-  NavigationItem(Icons.pin_drop_outlined, Icons.pin_drop, 'Map'),
-  NavigationItem(Icons.directions_car_outlined, Icons.directions_car, 'Trips'),
-  NavigationItem(Icons.inbox_outlined, Icons.inbox, 'Inbox'),
-  NavigationItem(Icons.person_outline, Icons.person, 'Profile'),
-];
-
+  final List<NavigationItem> _navigationItems = [
+    NavigationItem(Icons.home_outlined, Icons.home, 'Home'),
+    NavigationItem(Icons.pin_drop_outlined, Icons.pin_drop, 'Map'),
+    NavigationItem(
+      Icons.directions_car_outlined,
+      Icons.directions_car,
+      'Trips',
+    ),
+    NavigationItem(Icons.inbox_outlined, Icons.inbox, 'Inbox'),
+    NavigationItem(Icons.person_outline, Icons.person, 'Profile'),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -57,12 +59,12 @@ final List<NavigationItem> _navigationItems = [
                 _navigationItems.length,
                 (index) => Expanded(
                   child: _buildNavItem(
-                  _navigationItems[index].outlinedIcon,
-                  _navigationItems[index].filledIcon,
-                  _navigationItems[index].label,
-                  (_currentIndex == index),
-                  index,
-                ),
+                    _navigationItems[index].outlinedIcon,
+                    _navigationItems[index].filledIcon,
+                    _navigationItems[index].label,
+                    (_currentIndex == index),
+                    index,
+                  ),
                 ),
               ),
             ),
@@ -72,54 +74,50 @@ final List<NavigationItem> _navigationItems = [
     );
   }
 
-Widget _buildNavItem(
-  IconData outlinedIcon,
-  IconData filledIcon,
-  String label,
-  bool isSelected,
-  int index,
-) {
-  return Material(
-    color: Colors.transparent,
-    child: InkWell(
-      onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? filledIcon : outlinedIcon,
-              color: isSelected
-                  ? AppColors.accent
-                  : AppColors.secondaryText,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: isSelected
-                    ? AppColors.accent
-                    : AppColors.secondaryText,
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.normal,
+  Widget _buildNavItem(
+    IconData outlinedIcon,
+    IconData filledIcon,
+    String label,
+    bool isSelected,
+    int index,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isSelected ? filledIcon : outlinedIcon,
+                color: isSelected ? AppColors.accent : AppColors.secondaryText,
+                size: 24,
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color:
+                      isSelected ? AppColors.accent : AppColors.secondaryText,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
 class NavigationItem {

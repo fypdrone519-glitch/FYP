@@ -8,11 +8,7 @@ class CarCard extends StatelessWidget {
   final Car car;
   final VoidCallback? onTap;
 
-  const CarCard({
-    super.key,
-    required this.car,
-    this.onTap,
-  });
+  const CarCard({super.key, required this.car, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -46,27 +42,28 @@ class CarCard extends StatelessWidget {
                     height: 200,
                     width: double.infinity,
                     color: AppColors.border,
-                    child: car.imageUrl.isNotEmpty
-                        ? Image.network(
-                            car.imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Center(
-                                child: Icon(
-                                  Icons.car_rental,
-                                  size: 60,
-                                  color: AppColors.secondaryText,
-                                ),
-                              );
-                            },
-                          )
-                        : const Center(
-                            child: Icon(
-                              Icons.car_rental,
-                              size: 60,
-                              color: AppColors.secondaryText,
+                    child:
+                        car.imageUrl.isNotEmpty
+                            ? Image.network(
+                              car.imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(
+                                  child: Icon(
+                                    Icons.car_rental,
+                                    size: 60,
+                                    color: AppColors.secondaryText,
+                                  ),
+                                );
+                              },
+                            )
+                            : const Center(
+                              child: Icon(
+                                Icons.car_rental,
+                                size: 60,
+                                color: AppColors.secondaryText,
+                              ),
                             ),
-                          ),
                   ),
                   // Badges
                   Positioned(
@@ -74,32 +71,33 @@ class CarCard extends StatelessWidget {
                     left: AppSpacing.sm,
                     child: Wrap(
                       spacing: AppSpacing.xs,
-                      children: car.badges.map((badge) {
-                        Color badgeColor = AppColors.accent;
-                        if (badge == 'Verified') {
-                          badgeColor = Colors.blue;
-                        } else if (badge == 'Instant') {
-                          badgeColor = Colors.orange;
-                        }
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xs,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: badgeColor,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            badge,
-                            style: const TextStyle(
-                              color: AppColors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                      children:
+                          car.badges.map((badge) {
+                            Color badgeColor = AppColors.accent;
+                            if (badge == 'Verified') {
+                              badgeColor = Colors.blue;
+                            } else if (badge == 'Instant') {
+                              badgeColor = Colors.orange;
+                            }
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.xs,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: badgeColor,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                badge,
+                                style: const TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                     ),
                   ),
                 ],
@@ -112,31 +110,29 @@ class CarCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Model Name
-                  Text(
-                    car.fullName,
-                    style: AppTextStyles.carModel(context),
-                  ),
+                  Text(car.fullName, style: AppTextStyles.carModel(context)),
                   const SizedBox(height: AppSpacing.xs),
                   // Features
                   Wrap(
                     spacing: AppSpacing.xs,
                     runSpacing: AppSpacing.xs,
-                    children: car.features.take(3).map((feature) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.xs,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.foreground,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          feature,
-                          style: AppTextStyles.meta(context),
-                        ),
-                      );
-                    }).toList(),
+                    children:
+                        car.features.take(3).map((feature) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xs,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.foreground,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              feature,
+                              style: AppTextStyles.meta(context),
+                            ),
+                          );
+                        }).toList(),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   // Rating and Trips
@@ -206,4 +202,3 @@ class CarCard extends StatelessWidget {
     );
   }
 }
-

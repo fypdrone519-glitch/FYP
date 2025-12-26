@@ -75,9 +75,9 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                     children: [
                       Text(
                         'Veyra',
-                        style: AppTextStyles.h2(context).copyWith(
-                          color: AppColors.lightText,
-                        ),
+                        style: AppTextStyles.h2(
+                          context,
+                        ).copyWith(color: AppColors.lightText),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -109,9 +109,9 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Find your next ride',
-                      style: AppTextStyles.h1(context).copyWith(
-                        color: AppColors.lightText,
-                      ),
+                      style: AppTextStyles.h1(
+                        context,
+                      ).copyWith(color: AppColors.lightText),
                     ),
                   ),
                 ),

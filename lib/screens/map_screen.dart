@@ -14,7 +14,6 @@ class MapScreenContent extends StatefulWidget {
 }
 
 class _MapScreenContentState extends State<MapScreenContent> {
-  // Sample car data
   final List<Car> _cars = [
     Car(
       id: '1',
@@ -65,15 +64,9 @@ class _MapScreenContentState extends State<MapScreenContent> {
         child: Stack(
           children: [
             // Full Screen Map
-            CarsMap(
-              cars: _cars,
-              onCarMarkerTap: (car) {
-                // Show car details in bottom sheet
-                _showCarDetails(car);
-              },
-            ),
-            
-            // Top Bar with Title and Filter
+            CarsMap(cars: _cars, onCarMarkerTap: (car) {}),
+
+            // Top Bar
             Positioned(
               top: 0,
               left: 0,
@@ -94,35 +87,97 @@ class _MapScreenContentState extends State<MapScreenContent> {
                   children: [
                     Text(
                       'Cars on Map',
-                      style: AppTextStyles.h2(context).copyWith(
-                        color: AppColors.lightText,
-                      ),
+                      style: AppTextStyles.h2(
+                        context,
+                      ).copyWith(color: AppColors.lightText),
                     ),
                     const Spacer(),
-                    // Filter/Settings Button
                     IconButton(
-                      onPressed: () {
-                        // Show filter options
-                      },
-                      icon: const Icon(
-                        Icons.tune,
-                        color: AppColors.lightText,
-                      ),
+                      icon: const Icon(Icons.tune, color: AppColors.lightText),
+                      onPressed: () {},
                     ),
                   ],
                 ),
               ),
             ),
-            
-            // Floating Action Button for Current Location
+
+            // Draggable Cards
+            DraggableScrollableSheet(
+              initialChildSize: 0.35,
+              minChildSize: 0.25,
+              maxChildSize: 0.9,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.foreground,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(AppSpacing.cardRadius),
+                      topRight: Radius.circular(AppSpacing.cardRadius),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Drag Handle
+                      Container(
+                        margin: const EdgeInsets.only(top: AppSpacing.xs),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+
+                      // Header
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Cars near you',
+                            style: AppTextStyles.h2(context),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+
+                      Expanded(
+                        child: ListView.builder(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                          ),
+                          itemCount: _cars.length,
+                          itemBuilder: (context, index) {
+                            return CarCard(car: _cars[index], onTap: () {});
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            // Current Location Button
             Positioned(
-              bottom: 100,
+              bottom: 120,
               right: AppSpacing.sm,
               child: FloatingActionButton(
-                onPressed: () {
-                  // Center map on current location
-                },
                 backgroundColor: AppColors.accent,
+                onPressed: () {},
                 child: const Icon(
                   Icons.my_location,
                   color: AppColors.lightText,
@@ -131,62 +186,6 @@ class _MapScreenContentState extends State<MapScreenContent> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showCarDetails(Car car) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.4,
-        minChildSize: 0.3,
-        maxChildSize: 0.8,
-        builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: AppColors.foreground,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(AppSpacing.cardRadius),
-                topRight: Radius.circular(AppSpacing.cardRadius),
-              ),
-            ),
-            child: Column(
-              children: [
-                // Drag Handle
-                Container(
-                  margin: const EdgeInsets.only(top: AppSpacing.xs),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                
-                // Car Details
-                Expanded(
-                  child: SingleChildScrollView(
-                    controller: scrollController,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                    ),
-                    child: CarCard(
-                      car: car,
-                      onTap: () {
-                        // Navigate to car details page
-                        Navigator.pop(context);
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }
