@@ -16,7 +16,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> _screens = [
     const HomeScreenContent(), // We'll extract the content from HomeScreen
-    const MapScreenContent(), // We'll extract the content from MapScreen
+    //const MapScreenContent(), // We'll extract the content from MapScreen
     const TripsScreen(), // Placeholder for trips
     const InboxScreen(), // Placeholder for inbox
     const ProfileScreen(), // Placeholder for profile
@@ -85,9 +85,19 @@ class _MainNavigationState extends State<MainNavigation> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          setState(() {
+          if(label == 'Map'){
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const MapsScreen(),
+              ),
+            );
+            return;
+          }
+          else{
+            setState(() {
             _currentIndex = index;
           });
+          }
         },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),

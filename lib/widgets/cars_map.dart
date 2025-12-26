@@ -62,12 +62,12 @@ class _CarsMapState extends State<CarsMap> {
         Marker(
           markerId: MarkerId(car.id),
           position: LatLng(car.latitude!, car.longitude!),
+          onTap: (){
+            widget.onCarMarkerTap?.call(car);
+          },
           infoWindow: InfoWindow(
             title: '${car.make} ${car.model}',
             snippet: 'Rs ${car.pricePerDay.toStringAsFixed(0)}/day',
-            onTap: () {
-              widget.onCarMarkerTap?.call(car);
-            },
           ),
         ),
       );
@@ -80,6 +80,17 @@ class _CarsMapState extends State<CarsMap> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
+        // Positioned(
+        //   top: 40,
+        //   right: 20,
+        //   child: FloatingActionButton(
+        //     heroTag: 'back_btn',
+        //     mini: true,
+        //     backgroundColor: Colors.white,
+        //     onPressed: () {},
+        //     child: const Icon(Icons.arrow_back, color: Colors.black),
+        //   ),
+        // ),
         GoogleMap(
           initialCameraPosition: CameraPosition(
             target: _userLocation ?? _fallbackLocation,
@@ -93,14 +104,33 @@ class _CarsMapState extends State<CarsMap> {
             _controller = controller;
           },
         ),
+         // 🔙 Back Button (Safe & Visible)
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12, right: 360),
+              child: FloatingActionButton(
+                heroTag: 'back_btn',
+                mini: false,
+                backgroundColor: Colors.white,
+                elevation: 3,
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Icon(Icons.arrow_back, color: Colors.black,size: 30,),
+              ),
+            ),
+          ),
+        ),
 
         // 📍 Custom My Location Button (Bottom Left)
         Positioned(
-          bottom: 20,
-          left: 326,
+          bottom: 30,
+          left: 350,
           child: FloatingActionButton(
             heroTag: 'my_location_btn',
-            mini: true,
+            mini: false,
             backgroundColor: Colors.white,
             onPressed: () {
               if (_userLocation != null && _controller != null) {
@@ -109,7 +139,7 @@ class _CarsMapState extends State<CarsMap> {
                 );
               }
             },
-            child: const Icon(Icons.my_location, color: Colors.black),
+            child: const Icon(Icons.my_location, color: Colors.black,size: 30,),
           ),
         ),
       ],

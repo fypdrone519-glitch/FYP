@@ -5,6 +5,15 @@ import '../widgets/car_card.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
+class MapsScreen extends StatelessWidget {
+  const MapsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: MapScreenContent(),);
+  }
+}
+
 class MapScreenContent extends StatefulWidget {
   const MapScreenContent({super.key});
 
@@ -55,7 +64,7 @@ class _MapScreenContentState extends State<MapScreenContent> {
           builder: (context, scrollController) {
             return Container(
               decoration: BoxDecoration(
-                color: AppColors.foreground,
+                //color: const Color.fromARGB(255, 33, 91, 148),
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(AppSpacing.cardRadius),
                 ),
@@ -76,21 +85,6 @@ class _MapScreenContentState extends State<MapScreenContent> {
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                    ),
-
-                    const SizedBox(height: AppSpacing.sm),
-
-                    // Image section
-                    Container(
-                      height: 220,
-                      width: double.infinity,
-                      color: AppColors.border,
-                      child:
-                          car.imageUrl.isNotEmpty
-                              ? Image.network(car.imageUrl, fit: BoxFit.cover)
-                              : const Center(
-                                child: Icon(Icons.car_rental, size: 80),
-                              ),
                     ),
 
                     const SizedBox(height: AppSpacing.sm),
