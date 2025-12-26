@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/car.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_text_styles.dart';
-import '../theme/app_spacing.dart';
-import '../widgets/car_card.dart';
 import '../widgets/cars_map.dart';
+import '../widgets/car_card.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 
 class MapScreenContent extends StatefulWidget {
   const MapScreenContent({super.key});
@@ -23,8 +22,8 @@ class _MapScreenContentState extends State<MapScreenContent> {
       rating: 4.8,
       trips: 120,
       pricePerDay: 5000,
-      features: ['Automatic', 'AC', 'Bluetooth'],
-      badges: ['Instant', 'Verified'],
+      features: ['Automatic', 'AC'],
+      badges: ['Instant'],
       latitude: 24.8607,
       longitude: 67.0011,
     ),
@@ -34,99 +33,42 @@ class _MapScreenContentState extends State<MapScreenContent> {
       model: 'Civic',
       imageUrl: '',
       rating: 4.9,
-      trips: 85,
+      trips: 80,
       pricePerDay: 6000,
-      features: ['Automatic', 'AC', 'Navigation'],
-      badges: ['Delivery', 'Verified'],
-      latitude: 24.8607,
-      longitude: 67.0011,
-    ),
-    Car(
-      id: '3',
-      make: 'Suzuki',
-      model: 'Alto',
-      imageUrl: '',
-      rating: 4.6,
-      trips: 200,
-      pricePerDay: 3000,
-      features: ['Manual', 'AC'],
-      badges: ['Instant'],
-      latitude: 24.8607,
-      longitude: 67.0011,
+      features: ['Automatic'],
+      badges: ['Verified'],
+      latitude: 24.865,
+      longitude: 67.01,
     ),
   ];
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.foreground,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Full Screen Map
-            CarsMap(cars: _cars, onCarMarkerTap: (car) {}),
-
-            // Top Bar
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'Cars on Map',
-                      style: AppTextStyles.h2(
-                        context,
-                      ).copyWith(color: AppColors.lightText),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.tune, color: AppColors.lightText),
-                      onPressed: () {},
-                    ),
-                  ],
+  void _openCarSheet(Car car) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.45,
+          minChildSize: 0.35,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: AppColors.foreground,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppSpacing.cardRadius),
                 ),
               ),
-            ),
-
-            // Draggable Cards
-            DraggableScrollableSheet(
-              initialChildSize: 0.35,
-              minChildSize: 0.25,
-              maxChildSize: 0.9,
-              builder: (context, scrollController) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.foreground,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(AppSpacing.cardRadius),
-                      topRight: Radius.circular(AppSpacing.cardRadius),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, -4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Drag Handle
-                      Container(
-                        margin: const EdgeInsets.only(top: AppSpacing.xs),
+              child: SingleChildScrollView(
+                controller: scrollController,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Drag handle
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 10),
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
@@ -134,59 +76,46 @@ class _MapScreenContentState extends State<MapScreenContent> {
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
+                    ),
 
-                      // Header
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
-                        ),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Cars near you',
-                            style: AppTextStyles.h2(context),
-                          ),
-                        ),
+                    const SizedBox(height: AppSpacing.sm),
+
+                    // Image section
+                    Container(
+                      height: 220,
+                      width: double.infinity,
+                      color: AppColors.border,
+                      child:
+                          car.imageUrl.isNotEmpty
+                              ? Image.network(car.imageUrl, fit: BoxFit.cover)
+                              : const Center(
+                                child: Icon(Icons.car_rental, size: 80),
+                              ),
+                    ),
+
+                    const SizedBox(height: AppSpacing.sm),
+
+                    // Car card
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
                       ),
-                      const SizedBox(height: AppSpacing.sm),
+                      child: CarCard(car: car),
+                    ),
 
-                      Expanded(
-                        child: ListView.builder(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                          ),
-                          itemCount: _cars.length,
-                          itemBuilder: (context, index) {
-                            return CarCard(car: _cars[index], onTap: () {});
-                          },
-                        ),
-                      ),
-
-                      const SizedBox(height: AppSpacing.lg),
-                    ],
-                  ),
-                );
-              },
-            ),
-
-            // Current Location Button
-            Positioned(
-              bottom: 120,
-              right: AppSpacing.sm,
-              child: FloatingActionButton(
-                backgroundColor: AppColors.accent,
-                onPressed: () {},
-                child: const Icon(
-                  Icons.my_location,
-                  color: AppColors.lightText,
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: CarsMap(cars: _cars, onCarMarkerTap: _openCarSheet));
   }
 }
