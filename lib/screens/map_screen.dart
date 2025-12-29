@@ -5,6 +5,15 @@ import '../widgets/cars_map.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
+class MapsScreen extends StatelessWidget {
+  const MapsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: MapScreenContent());
+  }
+}
+
 class MapScreenContent extends StatefulWidget {
   const MapScreenContent({super.key});
 
@@ -63,51 +72,70 @@ class _MapScreenContentState extends State<MapScreenContent> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (_) => DraggableScrollableSheet(
-            initialChildSize: 0.45,
-            maxChildSize: 0.9,
-            builder:
-                (_, controller) => Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.foreground,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(AppSpacing.cardRadius),
-                    ),
-                  ),
-                  child: ListView(
-                    controller: controller,
-                    children: [
-                      Center(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 12),
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ),
-                      Container(
-                        height: 220,
-                        color: AppColors.border,
-                        child: const Icon(Icons.car_rental, size: 80),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        child: Text(
-                          car.fullName,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+      builder: (_) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.45,
+          minChildSize: 0.35,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: AppColors.foreground,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppSpacing.cardRadius),
                 ),
-          ),
+              ),
+              child: SingleChildScrollView(
+                controller: scrollController,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Drag handle
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 10),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: AppSpacing.sm),
+
+                    // Image placeholder
+                    Container(
+                      height: 220,
+                      width: double.infinity,
+                      color: AppColors.border,
+                      child: const Center(
+                        child: Icon(Icons.car_rental, size: 80),
+                      ),
+                    ),
+
+                    const SizedBox(height: AppSpacing.sm),
+
+                    Padding(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      child: Text(
+                        car.fullName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -122,7 +150,7 @@ class _MapScreenContentState extends State<MapScreenContent> {
             onBoundsChanged: _updateVisibleCars,
           ),
 
-          // Bottom floating cards
+          // 🚗 Bottom floating horizontal cards
           if (_visibleCars.isNotEmpty)
             Positioned(
               bottom: 20,
