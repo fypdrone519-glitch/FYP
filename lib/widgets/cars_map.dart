@@ -7,12 +7,14 @@ class CarsMap extends StatefulWidget {
   final List<Car> cars;
   final Function(Car) onCarTap;
   final Function(LatLngBounds) onBoundsChanged;
+  final void Function(GoogleMapController)? onMapReady; // 👈 ADD
 
   const CarsMap({
     super.key,
     required this.cars,
     required this.onCarTap,
     required this.onBoundsChanged,
+    this.onMapReady, // 👈 ADD
   });
 
   @override
@@ -70,12 +72,14 @@ class _CarsMapState extends State<CarsMap> {
   }
 
   @override
+  @override
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
         GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: _userLocation ?? _fallbackLocation,
+          initialCameraPosition: const CameraPosition(
+            target: LatLng(24.8607, 67.0011),
             zoom: 13,
           ),
           myLocationEnabled: true,
@@ -84,6 +88,7 @@ class _CarsMapState extends State<CarsMap> {
           markers: _markers,
           onMapCreated: (controller) {
             _controller = controller;
+            widget.onMapReady?.call(controller);
           },
           onCameraIdle: () async {
             if (_controller == null) return;
@@ -92,21 +97,46 @@ class _CarsMapState extends State<CarsMap> {
           },
         ),
 
-        // 📍 My Location button (BOTTOM LEFT)
+        // 🔙 BACK BUTTON (TOP LEFT)
         Positioned(
-          bottom: 24,
-          left: 16,
-          child: FloatingActionButton(
-            heroTag: 'my_location_btn',
-            backgroundColor: Colors.white,
-            onPressed: () {
-              if (_userLocation != null && _controller != null) {
+          top: 12,
+          left: 12,
+          child: SafeArea(
+            child: FloatingActionButton(
+              heroTag: 'back_btn',
+              mini: true,
+              backgroundColor: Colors.white,
+              elevation: 4,
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Icon(Icons.arrow_back, color: Colors.black),
+            ),
+          ),
+        ),
+
+        // 📍 MY LOCATION BUTTON (TOP RIGHT)
+        Positioned(
+          top: 12,
+          right: 12,
+          child: SafeArea(
+            child: FloatingActionButton(
+              heroTag: 'location_btn',
+              mini: true,
+              backgroundColor: Colors.white,
+              elevation: 4,
+              onPressed: () async {
+                if (_controller == null) return;
+                final position = await Geolocator.getCurrentPosition();
                 _controller!.animateCamera(
-                  CameraUpdate.newLatLngZoom(_userLocation!, 14),
+                  CameraUpdate.newLatLngZoom(
+                    LatLng(position.latitude, position.longitude),
+                    14,
+                  ),
                 );
-              }
-            },
-            child: const Icon(Icons.my_location, color: Colors.black),
+              },
+              child: const Icon(Icons.my_location, color: Colors.black),
+            ),
           ),
         ),
       ],
