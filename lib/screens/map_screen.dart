@@ -217,7 +217,7 @@ class _MapsScreenState extends State<MapsScreen> {
           bottom: 30,
           left: 0,
           right: 0,
-          height: 280, // Slightly taller for better visuals
+          height: MediaQuery.of(context).size.height * 0.30, // Slightly taller for better visuals
           child: CarouselSlider.builder(
             itemCount: _cars.length,
             itemBuilder: (context, index, realIndex) {
