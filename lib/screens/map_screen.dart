@@ -5,6 +5,7 @@ import '../widgets/cars_map.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 
 class MapsScreen extends StatefulWidget {
   const MapsScreen({super.key});
@@ -15,6 +16,7 @@ class MapsScreen extends StatefulWidget {
 
 class _MapsScreenState extends State<MapsScreen> {
   GoogleMapController? _mapController;
+  int _currentIndex = 0;
   final List<Car> _cars = [
     Car(
       id: '1',
@@ -183,101 +185,101 @@ class _MapsScreenState extends State<MapsScreen> {
             ),
           ),
 
-          /// LOCATION
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: FloatingActionButton(
-                  heroTag: null,
-                  mini: true,
-                  backgroundColor: Colors.white,
-                  onPressed: () async {
-                    if (_mapController == null) return;
+          // /// LOCATION
+          // SafeArea(
+          //   child: Align(
+          //     alignment: Alignment.topRight,
+          //     child: Padding(
+          //       padding: const EdgeInsets.all(12),
+          //       child: FloatingActionButton(
+          //         heroTag: null,
+          //         mini: true,
+          //         backgroundColor: Colors.white,
+          //         onPressed: () async {
+          //           if (_mapController == null) return;
 
-                    final position = await Geolocator.getCurrentPosition();
-                    _mapController!.animateCamera(
-                      CameraUpdate.newLatLngZoom(
-                        LatLng(position.latitude, position.longitude),
-                        14,
-                      ),
-                    );
-                  },
-                  child: const Icon(Icons.my_location, color: Colors.black),
-                ),
-              ),
-            ),
-          ),
+          //           final position = await Geolocator.getCurrentPosition();
+          //           _mapController!.animateCamera(
+          //             CameraUpdate.newLatLngZoom(
+          //               LatLng(position.latitude, position.longitude),
+          //               14,
+          //             ),
+          //           );
+          //         },
+          //         child: const Icon(Icons.my_location, color: Colors.black),
+          //       ),
+          //     ),
+          //   ),
+          // ),
 
           /// BOTTOM CARDS
-          Positioned(
-            bottom: 16,
-            left: 0,
-            right: 0,
-            height: 260,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _cars.length,
-              itemBuilder: (context, index) {
-                final car = _cars[index];
-                return GestureDetector(
+        Positioned(
+          bottom: 30,
+          left: 0,
+          right: 0,
+          height: 280, // Slightly taller for better visuals
+          child: CarouselSlider.builder(
+            itemCount: _cars.length,
+            itemBuilder: (context, index, realIndex) {
+              final car = _cars[index];
+              return AnimatedOpacity(
+                opacity: _currentIndex == index ? 1.0 : 0.9,
+                duration: const Duration(milliseconds: 100),
+                child: GestureDetector(
                   onTap: () => _openCarSheet(car),
                   child: Container(
-                    width: 260,
-                    margin: const EdgeInsets.only(right: 16),
+                    width: MediaQuery.of(context).size.width * 0.85,
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(
                       color: AppColors.cardSurface,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 8,
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        /// IMAGE (FIXED — FULL WIDTH)
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: AspectRatio(
-                              aspectRatio: 16 / 9,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child:
-                                    car.imageUrl.isNotEmpty
-                                        ? Image.network(
-                                          car.imageUrl,
-                                          fit: BoxFit.cover,
-                                        )
-                                        : Container(
-                                          color: Colors.grey.shade200,
-                                          child: const Icon(
-                                            Icons.car_rental,
-                                            size: 40,
-                                            color: Colors.grey,
-                                          ),
+                        /// IMAGE with overlay rating
+                        Stack(
+                          children: [
+                            // Image
+                            ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(20),
+                                topRight: Radius.circular(20),
+                              ),
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: 160,
+                                child: car.imageUrl.isNotEmpty
+                                    ? Image.network(
+                                        car.imageUrl,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Container(
+                                        color: Colors.grey.shade200,
+                                        child: const Icon(
+                                          Icons.car_rental,
+                                          size: 40,
+                                          color: Colors.grey,
                                         ),
+                                      ),
                               ),
                             ),
-                          ),
-                        ),
-
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              /// ⭐ RATING (unchanged position)
-                              Container(
+                            
+                            // Rating overlay
+                            Positioned(
+                              top: 12,
+                              left: 12,
+                              child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
+                                  horizontal: 10,
+                                  vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
                                   color: Colors.amber,
@@ -293,59 +295,111 @@ class _MapsScreenState extends State<MapsScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      car.rating.toStringAsFixed(1),
+                                      '${car.rating.toStringAsFixed(1)} 2466 reviews',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
+                                        fontSize: 12,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                car.fullName,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                            ),
+                          ],
+                        ),
+                
+                        /// CONTENT
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      car.fullName,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Karachi, Pakistan',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              const Text(
-                                'Karachi, Pakistan',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey,
+                
+                                /// Bottom row with date and duration
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '6-13 May  From Rs ${car.pricePerDay}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    const Text(
+                                      '7 Nights',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.lightGreen,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'Available • Rs ${car.pricePerDay}/day',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                );
+                ),
+              );
+            },
+            options: CarouselOptions(
+              onPageChanged: (index, reason) {
+                setState(() {
+                  _currentIndex = index;
+                });
               },
+              height: MediaQuery.of(context).size.height,
+              viewportFraction: 0.85, // How much of the card is visible
+              enlargeCenterPage: true, // Makes center card larger
+              enlargeFactor: 0.15, // How much to enlarge (subtle)
+              enlargeStrategy: CenterPageEnlargeStrategy.scale, // Scale animation
+              enableInfiniteScroll: false,
+              initialPage: 0,
+              autoPlay: false,
+              padEnds: true, // Adds padding at start/end
             ),
           ),
+        ),
         ],
       ),
     );

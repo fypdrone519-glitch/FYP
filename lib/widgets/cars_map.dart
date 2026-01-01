@@ -96,49 +96,6 @@ class _CarsMapState extends State<CarsMap> {
             widget.onBoundsChanged(bounds);
           },
         ),
-
-        // 🔙 BACK BUTTON (TOP LEFT)
-        Positioned(
-          top: 12,
-          left: 12,
-          child: SafeArea(
-            child: FloatingActionButton(
-              heroTag: 'back_btn',
-              mini: true,
-              backgroundColor: Colors.white,
-              elevation: 4,
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Icon(Icons.arrow_back, color: Colors.black),
-            ),
-          ),
-        ),
-
-        // 📍 MY LOCATION BUTTON (TOP RIGHT)
-        Positioned(
-          top: 12,
-          right: 12,
-          child: SafeArea(
-            child: FloatingActionButton(
-              heroTag: 'location_btn',
-              mini: true,
-              backgroundColor: Colors.white,
-              elevation: 4,
-              onPressed: () async {
-                if (_controller == null) return;
-                final position = await Geolocator.getCurrentPosition();
-                _controller!.animateCamera(
-                  CameraUpdate.newLatLngZoom(
-                    LatLng(position.latitude, position.longitude),
-                    14,
-                  ),
-                );
-              },
-              child: const Icon(Icons.my_location, color: Colors.black),
-            ),
-          ),
-        ),
       ],
     );
   }
