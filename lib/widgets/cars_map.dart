@@ -2,19 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/car.dart';
+import 'map_pin_widget.dart';
 
 class CarsMap extends StatefulWidget {
   final List<Car> cars;
   final Function(Car) onCarTap;
   final Function(LatLngBounds) onBoundsChanged;
-  final void Function(GoogleMapController)? onMapReady; // 👈 ADD
+  final void Function(GoogleMapController)? onMapReady;
+  final String? selectedCarId; // ID of the currently selected car
 
   const CarsMap({
     super.key,
     required this.cars,
     required this.onCarTap,
     required this.onBoundsChanged,
-    this.onMapReady, // 👈 ADD
+    this.onMapReady,
+    this.selectedCarId,
   });
 
   @override
@@ -24,6 +27,7 @@ class CarsMap extends StatefulWidget {
 class _CarsMapState extends State<CarsMap> {
   GoogleMapController? _controller;
   LatLng? _userLocation;
+  Map<String, BitmapDescriptor> _markerIcons = {};
 
   static const LatLng _fallbackLocation = LatLng(24.8607, 67.0011); // Karachi
 
@@ -31,6 +35,37 @@ class _CarsMapState extends State<CarsMap> {
   void initState() {
     super.initState();
     _loadUserLocation();
+    _loadMarkerIcons();
+  }
+
+  @override
+  void didUpdateWidget(CarsMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reload markers when selected car changes
+    if (oldWidget.selectedCarId != widget.selectedCarId) {
+      _loadMarkerIcons();
+    }
+  }
+
+  Future<void> _loadMarkerIcons() async {
+    final Map<String, BitmapDescriptor> icons = {};
+    
+    for (var car in widget.cars) {
+      if (car.latitude != null && car.longitude != null) {
+        final isSelected = widget.selectedCarId == car.id;
+        final icon = await MapPinWidget.createCustomMarker(
+          price: car.pricePerDay,
+          isSelected: isSelected,
+        );
+        icons[car.id] = icon;
+      }
+    }
+    
+    if (mounted) {
+      setState(() {
+        _markerIcons = icons;
+      });
+    }
   }
 
   Future<void> _loadUserLocation() async {
@@ -58,15 +93,19 @@ class _CarsMapState extends State<CarsMap> {
     return widget.cars
         .where((car) => car.latitude != null && car.longitude != null)
         .map(
-          (car) => Marker(
-            markerId: MarkerId(car.id),
-            position: LatLng(car.latitude!, car.longitude!),
-            infoWindow: InfoWindow(
-              title: car.fullName,
-              snippet: 'Rs ${car.pricePerDay.toStringAsFixed(0)}/day',
-            ),
-            onTap: () => widget.onCarTap(car),
-          ),
+          (car) {
+            final icon = _markerIcons[car.id];
+            final isSelected = widget.selectedCarId == car.id;
+            
+            return Marker(
+              markerId: MarkerId(car.id),
+              position: LatLng(car.latitude!, car.longitude!),
+              icon: icon ?? BitmapDescriptor.defaultMarker,
+              onTap: () => widget.onCarTap(car),
+              alpha: isSelected ? 1.0 : 0.5, // Full opacity for selected, 50% for others
+              anchor: const Offset(0.5, 0.5), // Center the marker
+            );
+          },
         )
         .toSet();
   }

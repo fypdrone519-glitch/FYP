@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import 'map_screen.dart';
+import 'profile_screen.dart';
+import 'trips_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -12,14 +14,14 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int _currentIndex = 0;
+  int _currentIndex = 0; // Tracks the screen index (0-3)
+  int _selectedNavIndex = 0; // Tracks the selected nav bar item (0-4)
 
   final List<Widget> _screens = [
-    const HomeScreenContent(), // We'll extract the content from HomeScreen
-    //const MapScreenContent(), // We'll extract the content from MapScreen
-    const TripsScreen(), // Placeholder for trips
-    const InboxScreen(), // Placeholder for inbox
-    const ProfileScreen(), // Placeholder for profile
+    const HomeScreenContent(), // Index 0: Home
+    const TripsScreen(),        // Index 1: Trips (Map pushes a new route, so not in this list)
+    const InboxScreen(),        // Index 2: Inbox
+    const ProfileScreen(),      // Index 3: Profile
   ];
 
   final List<NavigationItem> _navigationItems = [
@@ -38,32 +40,35 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _currentIndex, children: _screens),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppColors.cardSurface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Container(
-            height: 60,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(
-                _navigationItems.length,
-                (index) => Expanded(
-                  child: _buildNavItem(
-                    _navigationItems[index].outlinedIcon,
-                    _navigationItems[index].filledIcon,
-                    _navigationItems[index].label,
-                    (_currentIndex == index),
-                    index,
+      bottomNavigationBar: Opacity(
+        opacity: 0.95, // Adjust this value between 0.0 (fully transparent) and 1.0 (fully opaque)
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardSurface,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Container(
+              height: 60,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(
+                  _navigationItems.length,
+                  (index) => Expanded(
+                    child: _buildNavItem(
+                      _navigationItems[index].outlinedIcon,
+                      _navigationItems[index].filledIcon,
+                      _navigationItems[index].label,
+                      (_selectedNavIndex == index),
+                      index,
+                    ),
                   ),
                 ),
               ),
@@ -94,9 +99,14 @@ class _MainNavigationState extends State<MainNavigation> {
             return;
           }
           else{
+            // Adjust index for screens list (Map is not in the list)
+            int screenIndex = index;
+            if (index > 1) screenIndex = index - 1; // Trips, Inbox, Profile shift down by 1
+            
             setState(() {
-            _currentIndex = index;
-          });
+              _currentIndex = screenIndex;
+              _selectedNavIndex = index; // Store the actual nav bar index
+            });
           }
         },
         child: Container(
@@ -139,17 +149,6 @@ class NavigationItem {
 }
 
 // Placeholder screens for other tabs
-class TripsScreen extends StatelessWidget {
-  const TripsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Trips Screen - Coming Soon')),
-    );
-  }
-}
-
 class InboxScreen extends StatelessWidget {
   const InboxScreen({super.key});
 
@@ -161,13 +160,3 @@ class InboxScreen extends StatelessWidget {
   }
 }
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Profile Screen - Coming Soon')),
-    );
-  }
-}

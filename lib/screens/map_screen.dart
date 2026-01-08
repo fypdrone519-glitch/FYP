@@ -4,7 +4,6 @@ import '../models/car.dart';
 import '../widgets/cars_map.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 
 class MapsScreen extends StatefulWidget {
@@ -16,6 +15,7 @@ class MapsScreen extends StatefulWidget {
 
 class _MapsScreenState extends State<MapsScreen> {
   GoogleMapController? _mapController;
+  final CarouselSliderController _carouselController = CarouselSliderController();
   int _currentIndex = 0;
   final List<Car> _cars = [
     Car(
@@ -46,6 +46,15 @@ class _MapsScreenState extends State<MapsScreen> {
     ),
   ];
 
+  void _onPinTapped(Car car) {
+    // Find the index of the tapped car
+    final carIndex = _cars.indexWhere((c) => c.id == car.id);
+    if (carIndex != -1) {
+      // Animate the carousel to the selected car
+      _carouselController.animateToPage(carIndex);
+    }
+  }
+
   void _openCarSheet(Car car) {
     showModalBottomSheet(
       context: context,
@@ -54,7 +63,7 @@ class _MapsScreenState extends State<MapsScreen> {
       builder: (_) {
         return DraggableScrollableSheet(
           initialChildSize: 0.55,
-          maxChildSize: 0.95,
+          maxChildSize: 0.85,
           builder: (context, controller) {
             return Container(
               decoration: BoxDecoration(
@@ -161,11 +170,12 @@ class _MapsScreenState extends State<MapsScreen> {
         children: [
           CarsMap(
             cars: _cars,
-            onCarTap: _openCarSheet,
+            onCarTap: _onPinTapped,
             onBoundsChanged: (_) {},
             onMapReady: (controller) {
               _mapController = controller;
             },
+            selectedCarId: _cars[_currentIndex].id,
           ),
 
           /// BACK
@@ -219,6 +229,7 @@ class _MapsScreenState extends State<MapsScreen> {
           right: 0,
           height: MediaQuery.of(context).size.height * 0.30, // Slightly taller for better visuals
           child: CarouselSlider.builder(
+            carouselController: _carouselController,
             itemCount: _cars.length,
             itemBuilder: (context, index, realIndex) {
               final car = _cars[index];
@@ -235,7 +246,7 @@ class _MapsScreenState extends State<MapsScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
