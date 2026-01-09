@@ -1,3 +1,4 @@
+import 'package:car_listing_app/screens/auth/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../main_navigation.dart';
@@ -39,7 +40,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Back button
               IconButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const WelcomeScreen(),
+                    ),
+                  );
+                },
                 icon: const Icon(Icons.arrow_back),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),

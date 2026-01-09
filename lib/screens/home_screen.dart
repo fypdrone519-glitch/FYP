@@ -74,7 +74,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Veyra',
+                        'Share Lane',
                         style: AppTextStyles.h2(
                           context,
                         ).copyWith(color: AppColors.lightText),
@@ -235,7 +235,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
 
             // Scrollable Cars Near You Section (Overlay)
             DraggableScrollableSheet(
-              initialChildSize: 0.4, // Start at 40% of screen height
+              initialChildSize: 0.5, // Start at 40% of screen height
               minChildSize: 0.4, // Minimum 30% of screen height
               maxChildSize: 0.90, // Maximum 95% of screen height
               builder: (context, scrollController) {

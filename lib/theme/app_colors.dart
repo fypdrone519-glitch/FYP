@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   // Background colors
   static const Color foreground = Color(0xFFF7F9FB); // Dark Blue
-  static const Color background = Color.fromARGB(255, 0, 30, 61);
+  static const Color background = Color(0xFF09111C);
   static const Color cardSurface = Color(0xFFFFFFFF);
   
   // Text colors
@@ -15,7 +15,7 @@ class AppColors {
   static const Color border = Color(0xFFE2E8F0);
   
   // Accent colors
-  static const Color accent = Color(0xFF19B394); // Teal/Green
+  static const Color accent = Color(0xFF245CD2); // light blue
   static const Color ratingStar = Color(0xFFFFA600);
   
   // Additional colors

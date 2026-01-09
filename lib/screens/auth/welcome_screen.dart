@@ -1,219 +1,282 @@
+import 'package:car_listing_app/screens/auth/login_screen.dart';
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_spacing.dart';
-import 'login_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
   @override
-  State<WelcomeScreen> createState() => _WelcomeScreenState();
+  State<WelcomeScreen> createState() => WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOut,
-      ),
-    );
-
-    // Start animation after a short delay
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        _animationController.forward();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
+class WelcomeScreenState extends State<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    // Responsive sizing
-    final iconSize = screenHeight * 0.12;
-    final cardBorderRadius = screenWidth * 0.08;
-    
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.background,
-              AppColors.background.withValues(alpha: 0.8),
-            ],
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'lib/assets/welcome_screen_image.png', // or Image.network for URL
+              fit: BoxFit.cover,
+            ),
           ),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              const Spacer(flex: 2),
-              
-              // Illustration placeholder
-              Container(
-                height: screenHeight * 0.28,
-                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                child: Icon(
-                  Icons.directions_car,
-                  size: iconSize,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
-              ),
-
-              const Spacer(),
-
-              // Bottom card with fade animation
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(cardBorderRadius),
-                        topRight: Radius.circular(cardBorderRadius),
+          //Heading and Subheading
+          SafeArea(
+            child: Container(
+              width: MediaQuery.of(context).size.width,// To make it full width
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Share Lane',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
                     ),
-                    child: Padding(
-                      padding: EdgeInsets.all(screenWidth * 0.06),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                      SizedBox(height: screenHeight * 0.015),
-                      
-                      // App name
-                      Text(
-                        'VEYRA',
-                        style: TextStyle(
-                          fontSize: screenHeight * 0.038,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.accent,
-                          letterSpacing: 2,
-                        ),
+                    SizedBox(height: 4),
+                    Text(
+                      'The Safe Way to Share.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black54,
                       ),
-
-                      SizedBox(height: screenHeight * 0.025),
-
-                      // Tagline
-                      Text(
-                        'Let\'s Get You Set Up\nfor Success',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: screenHeight * 0.026,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryText,
-                          height: 1.3,
-                        ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 30,
+            child:SafeArea(
+              top:false,
+              child:Center(
+                child: HorizontalSlider(
+                  onSlideComplete: () {
+                    // Navigate to Login Screen
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
                       ),
+                    );
+                  },
+                ),
+              )
+            )
+          ),
+        ],
+      )
+    );
+  }
+}
 
-                      SizedBox(height: screenHeight * 0.015),
+class HorizontalSlider extends StatefulWidget {
+  final VoidCallback onSlideComplete;
+  
+  const HorizontalSlider({
+    Key? key,
+    required this.onSlideComplete,
+  }) : super(key: key);
 
-                      // Description
-                      Text(
-                        'Organize your workflow and manage tasks easily\nall in one simple, powerful app.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: screenHeight * 0.017,
-                          color: AppColors.secondaryText,
-                          height: 1.5,
-                        ),
-                      ),
+  @override
+  State<HorizontalSlider> createState() => _HorizontalSliderState();
+}
 
-                      SizedBox(height: screenHeight * 0.04),
-
-                      // Get Started Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: screenHeight * 0.065,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              PageRouteBuilder(
-                                pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
-                                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                  const begin = Offset(1.0, 0.0);
-                                  const end = Offset.zero;
-                                  const curve = Curves.easeInOut;
-
-                                  var tween = Tween(begin: begin, end: end).chain(
-                                    CurveTween(curve: curve),
-                                  );
-
-                                  return SlideTransition(
-                                    position: animation.drive(tween),
-                                    child: child,
-                                  );
-                                },
-                                transitionDuration: const Duration(milliseconds: 400),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.accent,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(27),
-                            ),
-                          ),
-                          child: Text(
-                            'Get Started',
-                            style: TextStyle(
-                              fontSize: screenHeight * 0.019,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(height: screenHeight * 0.03),
+class _HorizontalSliderState extends State<HorizontalSlider> {
+  double _dragPosition = 5.0;
+  double _maxDrag = 0.0;
+  bool _isDragging = false;
+  
+  @override
+    double get _rotationAngle {
+    final progress = (_dragPosition / _maxDrag).clamp(0.0, 1.0);
+    return progress * 1.5708; // ~20 degrees max
+  }
+  Widget build(BuildContext context) {
+    return Container(
+      width: MediaQuery.of(context).size.width * 0.7,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Calculate max drag distance (container width - icon width)
+          _maxDrag = constraints.maxWidth - 70;
+          
+          return GestureDetector(
+            onHorizontalDragStart: (details) {
+              setState(() {
+                _isDragging = true;
+              });
+            },
+            onHorizontalDragUpdate: (details) {
+              setState(() {
+                // Update drag position, constrained between 0 and maxDrag
+                _dragPosition += details.delta.dx;
+                _dragPosition = _dragPosition.clamp(0.0, _maxDrag);
+              });
+            },
+            onHorizontalDragEnd: (details) {
+              setState(() {
+                _isDragging = false;
+                
+                // Check if slider reached the end (90% threshold)
+                if (_dragPosition >= _maxDrag * 0.9) {
+                  // Complete the slide
+                  _dragPosition = _maxDrag;
+                  widget.onSlideComplete();
+                } else {
+                  // Snap back to start
+                  _dragPosition=5.0;
+                }
+              });
+            },
+            child: Container(
+              height: 70,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(35),
+                color: Colors.grey[300],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Green Progress Track
+                  AnimatedContainer(
+                    duration: _isDragging 
+                        ? Duration.zero 
+                        : Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                    width: _dragPosition +65, // +70 for icon width
+                    height: 70,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(35),
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0x245CD2) .withOpacity(0.8),
+                          Color(0x245CD2).withOpacity(1.0),
                         ],
                       ),
                     ),
+                    child: ClipRect(
+                      child: CustomPaint(
+                        painter: _DottedLinesPainter(),
+                      ),
+                    ),
                   ),
-                ),
+                  
+                  // Sliding Car Icon
+                  AnimatedPositioned(
+                    duration: _isDragging 
+                        ? Duration.zero 
+                        : Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                    left: _dragPosition,
+                    top: 5,
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: Transform.rotate(
+                          angle: _rotationAngle,
+                          child: Image.asset(
+                            'lib/assets/slider_icon.png',
+                            width: 40,
+                            height: 40,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // Text Hint (fades as you slide)
+                  if (_dragPosition < _maxDrag * 0.3)
+                    Center(
+                      child: Opacity(
+                        opacity: 1 - (_dragPosition / (_maxDrag * 0.3)),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 100.0),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Slide to start',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                                Icon(
+                                  Icons.arrow_forward,
+                                  color: Colors.grey[500],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
+}
+
+class _DottedLinesPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.6)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final dashWidth = 10.0;
+    final dashSpace = 8.0;
+    // Y positions for the two dotted lines
+    final yPositions = [
+      size.height * 0.35,
+      size.height * 0.65,
+    ];
+
+    for (final y in yPositions) {
+      double startX = 12; // horizontal padding
+
+      while (startX < size.width - 12) {
+        canvas.drawLine(
+          Offset(startX, y),
+          Offset(startX + dashWidth, y),
+          paint,
+        );
+        startX += dashWidth + dashSpace;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
