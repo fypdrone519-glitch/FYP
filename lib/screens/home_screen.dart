@@ -87,11 +87,11 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: AppColors.accent,
+                            color: AppColors.iconsBackground,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            Icons.person,
+                            Icons.notifications_none,
                             color: AppColors.lightText,
                           ),
                         ),
@@ -129,8 +129,8 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                         // Search Bar
                         Container(
                           decoration: BoxDecoration(
-                            color: AppColors.cardSurface,
-                            borderRadius: BorderRadius.circular(16),
+                            color: AppColors.iconsBackground,
+                            borderRadius: BorderRadius.circular(26),
                             border: Border.all(
                               color: AppColors.border,
                               width: 1,
@@ -174,30 +174,102 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-
-                        // Calendar and Search Button Row
-                        Row(
-                          children: [
-                            Expanded(
-                              child: QuickChip(
-                                icon: Icons.calendar_today,
-                                label: 'Select dates',
-                                onTap: () {
-                                  // Show date picker
-                                },
-                              ),
+                        Container(
+                          width: MediaQuery.of(context).size.width,
+                          decoration: BoxDecoration(
+                            color: AppColors.iconsBackground,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 1,
                             ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Expanded(
-                              child: QuickChip(
-                                icon: Icons.access_time,
-                                label: 'Time',
-                                onTap: () {
-                                  // Show time picker
-                                },
-                              ),
-                            ),
-                          ],
+                          ),
+                          child: const DateRangePicker(),
+                          // child: Container(
+                          //   alignment: Alignment.center,
+                          //   child: Padding(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     child: Row(
+                          //       mainAxisSize: MainAxisSize.min,
+                          //       children: [
+                          //         // Start Date Section
+                          //         Padding(
+                          //           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          //           child: Row(
+                          //             children: [
+                          //               Icon(
+                          //                 Icons.calendar_today,
+                          //                 size: 16,
+                          //                 color: AppColors.white,
+                          //               ),
+                          //               const SizedBox(width: 8),
+                          //               Column(
+                          //                 crossAxisAlignment: CrossAxisAlignment.start,
+                          //                 mainAxisSize: MainAxisSize.min,
+                          //                 children: [
+                          //                   Text(
+                          //                     'Nov 22, 10:00',
+                          //                     style: TextStyle(
+                          //                       color: Colors.white,
+                          //                       fontSize: 14,
+                          //                       fontWeight: FontWeight.w500,
+                          //                     ),
+                          //                   ),
+                          //                 ],
+                          //               ),
+                          //             ],
+                          //           ),
+                          //         ),
+                          //         Container(
+                          //           height: 20,
+                          //           width: 20,
+                          //           decoration: BoxDecoration(
+                          //             borderRadius: BorderRadius.circular(8),
+                          //             border: Border.all(
+                          //               color: AppColors.border,
+                          //             ),
+                          //           ),
+                          //           child: Padding(
+                          //             padding: const EdgeInsets.symmetric(horizontal: 1),
+                          //             child: Icon(
+                          //               Icons.arrow_forward,
+                          //               size: 16,
+                          //               color: Colors.white54,
+                          //             ),
+                          //           ),
+                          //         ),
+                          //         // End Date Section
+                          //         Padding(
+                          //           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          //           child: Row(
+                          //             children: [
+                          //               Icon(
+                          //                 Icons.calendar_today,
+                          //                 size: 16,
+                          //                 color: Colors.white,
+                          //               ),
+                          //               const SizedBox(width: 8),
+                          //               Column(
+                          //                 crossAxisAlignment: CrossAxisAlignment.start,
+                          //                 mainAxisSize: MainAxisSize.min,
+                          //                 children: [
+                          //                   Text(
+                          //                     'Nov 25, 13:00',
+                          //                     style: TextStyle(
+                          //                       color: Colors.white,
+                          //                       fontSize: 14,
+                          //                       fontWeight: FontWeight.w500,
+                          //                     ),
+                          //                   ),
+                          //                 ],
+                          //               ),
+                          //             ],
+                          //           ),
+                          //         ),
+                          //       ],
+                          //     ),
+                          //   ),
+                          // ),
                         ),
                         Padding(
                           padding: const EdgeInsets.only(top: 28.0),
@@ -236,7 +308,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             // Scrollable Cars Near You Section (Overlay)
             DraggableScrollableSheet(
               initialChildSize: 0.5, // Start at 40% of screen height
-              minChildSize: 0.4, // Minimum 30% of screen height
+              minChildSize: 0.5, // Minimum 30% of screen height
               maxChildSize: 0.90, // Maximum 95% of screen height
               builder: (context, scrollController) {
                 return Container(
@@ -308,6 +380,282 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class DateRangePicker extends StatefulWidget {
+  const DateRangePicker({Key? key}) : super(key: key);
+
+  @override
+  State<DateRangePicker> createState() => _DateRangePickerState();
+}
+
+class _DateRangePickerState extends State<DateRangePicker> {
+  DateTime? startDate;
+  TimeOfDay? startTime;
+  DateTime? endDate;
+  TimeOfDay? endTime;
+
+  String get formattedStartDateTime {
+    if (startDate == null || startTime == null) return 'Select Start';
+    return '${_formatDate(startDate!)} ${startTime!.format(context)}';
+  }
+
+  String get formattedEndDateTime {
+    if (endDate == null || endTime == null) return 'Select End';
+    return '${_formatDate(endDate!)} ${endTime!.format(context)}';
+  }
+
+  String _formatDate(DateTime date) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}';
+  }
+
+  Future<void> _selectStartDateTime() async {
+    // First, pick the date
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: startDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: AppColors.cardSurface,
+              surface: AppColors.iconsBackground,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate != null) {
+      // Then, pick the time
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: startTime ?? TimeOfDay.now(),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.dark(
+                primary: AppColors.cardSurface,
+                surface: AppColors.iconsBackground,
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+
+      if (pickedTime != null) {
+        setState(() {
+          startDate = pickedDate;
+          startTime = pickedTime;
+          
+          // Clear end date if it's before start date
+          if (endDate != null && endDate!.isBefore(pickedDate)) {
+            endDate = null;
+            endTime = null;
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _selectEndDateTime() async {
+    if (startDate == null || startTime == null) {
+      // Show a message that start date must be selected first
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select start date and time first'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // First, pick the date
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: endDate ?? startDate!,
+      firstDate: startDate!,
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: AppColors.cardSurface,
+              surface: AppColors.iconsBackground,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate != null) {
+      // Then, pick the time
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: endTime ?? TimeOfDay.now(),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.dark(
+                primary: AppColors.cardSurface,
+                surface: AppColors.iconsBackground,
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+
+      if (pickedTime != null) {
+        // Validate that end time is after start time
+        final startDateTime = DateTime(
+          startDate!.year,
+          startDate!.month,
+          startDate!.day,
+          startTime!.hour,
+          startTime!.minute,
+        );
+        final endDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+
+        if (endDateTime.isAfter(startDateTime)) {
+          setState(() {
+            endDate = pickedDate;
+            endTime = pickedTime;
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('End date/time must be after start date/time'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.iconsBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.border,
+          width: 1,
+        ),
+      ),
+      child: Container(
+        alignment: Alignment.center,
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Start Date Section - CLICKABLE
+              InkWell(
+                onTap: _selectStartDateTime,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: AppColors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            formattedStartDateTime,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Arrow Container
+              Container(
+                height: 20,
+                width: 20,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.border,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 1),
+                  child: Icon(
+                    Icons.arrow_forward,
+                    size: 16,
+                    color: Colors.white54,
+                  ),
+                ),
+              ),
+              
+              // End Date Section - CLICKABLE
+              InkWell(
+                onTap: _selectEndDateTime,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            formattedEndDateTime,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
