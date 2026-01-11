@@ -194,40 +194,12 @@ class _MapsScreenState extends State<MapsScreen> {
               ),
             ),
           ),
-
-          // /// LOCATION
-          // SafeArea(
-          //   child: Align(
-          //     alignment: Alignment.topRight,
-          //     child: Padding(
-          //       padding: const EdgeInsets.all(12),
-          //       child: FloatingActionButton(
-          //         heroTag: null,
-          //         mini: true,
-          //         backgroundColor: Colors.white,
-          //         onPressed: () async {
-          //           if (_mapController == null) return;
-
-          //           final position = await Geolocator.getCurrentPosition();
-          //           _mapController!.animateCamera(
-          //             CameraUpdate.newLatLngZoom(
-          //               LatLng(position.latitude, position.longitude),
-          //               14,
-          //             ),
-          //           );
-          //         },
-          //         child: const Icon(Icons.my_location, color: Colors.black),
-          //       ),
-          //     ),
-          //   ),
-          // ),
-
           /// BOTTOM CARDS
         Positioned(
           bottom: 30,
           left: 0,
           right: 0,
-          height: MediaQuery.of(context).size.height * 0.30, // Slightly taller for better visuals
+          height: MediaQuery.of(context).size.height * 0.32, // Slightly taller for better visuals
           child: CarouselSlider.builder(
             carouselController: _carouselController,
             itemCount: _cars.length,
