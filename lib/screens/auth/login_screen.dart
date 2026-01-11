@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../main_navigation.dart';
 import 'signup_screen.dart';
+import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -43,9 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const WelcomeScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const WelcomeScreen()),
                   );
                 },
                 icon: const Icon(Icons.arrow_back),
@@ -154,14 +153,28 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: screenHeight * 0.07,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MainNavigation(),
-                      ),
-                    );
+                  onPressed: () async {
+                    try {
+                      final user = await AuthService().login(
+                        _emailController.text,
+                        _passwordController.text,
+                      );
+
+                      if (user != null) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MainNavigation(),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(e.toString())));
+                    }
                   },
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
@@ -187,7 +200,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const Expanded(child: Divider()),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.04,
+                    ),
                     child: Text(
                       'Or Continue With',
                       style: TextStyle(
@@ -220,7 +235,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.017),
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenHeight * 0.017,
+                        ),
                         side: BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -248,7 +265,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.017),
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenHeight * 0.017,
+                        ),
                         side: BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -278,22 +297,32 @@ class _LoginScreenState extends State<LoginScreen> {
                         Navigator.push(
                           context,
                           PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) => const SignUpScreen(),
-                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const SignUpScreen(),
+                            transitionsBuilder: (
+                              context,
+                              animation,
+                              secondaryAnimation,
+                              child,
+                            ) {
                               const begin = Offset(1.0, 0.0);
                               const end = Offset.zero;
                               const curve = Curves.easeInOut;
 
-                              var tween = Tween(begin: begin, end: end).chain(
-                                CurveTween(curve: curve),
-                              );
+                              var tween = Tween(
+                                begin: begin,
+                                end: end,
+                              ).chain(CurveTween(curve: curve));
 
                               return SlideTransition(
                                 position: animation.drive(tween),
                                 child: child,
                               );
                             },
-                            transitionDuration: const Duration(milliseconds: 400),
+                            transitionDuration: const Duration(
+                              milliseconds: 400,
+                            ),
                           ),
                         );
                       },

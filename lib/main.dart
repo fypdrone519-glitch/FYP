@@ -1,9 +1,13 @@
-import 'package:car_listing_app/screens/auth/welcome_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'screens/auth/welcome_screen.dart';
 import 'theme/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -23,13 +27,6 @@ class MyApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: AppColors.background,
         textTheme: GoogleFonts.interTextTheme(),
-        cardTheme: CardTheme(
-          color: AppColors.cardSurface,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
       ),
       home: const WelcomeScreen(),
     );

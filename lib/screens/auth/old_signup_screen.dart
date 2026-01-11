@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
-import '../../theme/app_spacing.dart';
 import '../main_navigation.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -33,11 +32,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     // Responsive sizing
-    final topSectionHeight = keyboardVisible ? screenHeight * 0.12 : screenHeight * 0.30;
+    final topSectionHeight =
+        keyboardVisible ? screenHeight * 0.12 : screenHeight * 0.30;
     final titleFontSize = screenHeight * 0.028;
     final iconSize = screenHeight * 0.07;
     final cardBorderRadius = screenWidth * 0.08;
-    
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Container(
@@ -65,7 +65,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     if (!keyboardVisible) ...[
                       // Title text on gradient background
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.08,
+                        ),
                         child: Text(
                           'Create Your Account\nand Simplify Your\nWorkday',
                           textAlign: TextAlign.center,
@@ -106,7 +108,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(height: screenHeight * 0.01),
-                        
+
                         // Sign up title
                         Center(
                           child: Text(
@@ -230,7 +232,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                               onPressed: () {
                                 setState(() {
-                                  _obscureConfirmPassword = !_obscureConfirmPassword;
+                                  _obscureConfirmPassword =
+                                      !_obscureConfirmPassword;
                                 });
                               },
                             ),
@@ -340,7 +343,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           children: [
                             const Expanded(child: Divider()),
                             Padding(
-                              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenWidth * 0.04,
+                              ),
                               child: Text(
                                 'Or Continue With',
                                 style: TextStyle(
@@ -363,7 +368,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 onPressed: () {
                                   // Handle Apple sign in
                                 },
-                                icon: const Icon(Icons.apple, color: Colors.black),
+                                icon: const Icon(
+                                  Icons.apple,
+                                  color: Colors.black,
+                                ),
                                 label: Text(
                                   'Apple',
                                   style: TextStyle(
@@ -373,7 +381,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(vertical: screenHeight * 0.017),
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: screenHeight * 0.017,
+                                  ),
                                   side: BorderSide(color: AppColors.border),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -401,7 +411,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(vertical: screenHeight * 0.017),
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: screenHeight * 0.017,
+                                  ),
                                   side: BorderSide(color: AppColors.border),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),

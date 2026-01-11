@@ -23,7 +23,7 @@ class WelcomeScreenState extends State<WelcomeScreen> {
           //Heading and Subheading
           SafeArea(
             child: Container(
-              width: MediaQuery.of(context).size.width,// To make it full width
+              width: MediaQuery.of(context).size.width, // To make it full width
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -40,10 +40,7 @@ class WelcomeScreenState extends State<WelcomeScreen> {
                     SizedBox(height: 4),
                     Text(
                       'The Safe Way to Share.',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black54,
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.black54),
                     ),
                   ],
                 ),
@@ -54,9 +51,9 @@ class WelcomeScreenState extends State<WelcomeScreen> {
             left: 0,
             right: 0,
             bottom: 30,
-            child:SafeArea(
-              top:false,
-              child:Center(
+            child: SafeArea(
+              top: false,
+              child: Center(
                 child: HorizontalSlider(
                   onSlideComplete: () {
                     // Navigate to Login Screen
@@ -68,22 +65,20 @@ class WelcomeScreenState extends State<WelcomeScreen> {
                     );
                   },
                 ),
-              )
-            )
+              ),
+            ),
           ),
         ],
-      )
+      ),
     );
   }
 }
 
 class HorizontalSlider extends StatefulWidget {
   final VoidCallback onSlideComplete;
-  
-  const HorizontalSlider({
-    Key? key,
-    required this.onSlideComplete,
-  }) : super(key: key);
+
+  const HorizontalSlider({Key? key, required this.onSlideComplete})
+    : super(key: key);
 
   @override
   State<HorizontalSlider> createState() => _HorizontalSliderState();
@@ -93,12 +88,12 @@ class _HorizontalSliderState extends State<HorizontalSlider> {
   double _dragPosition = 5.0;
   double _maxDrag = 0.0;
   bool _isDragging = false;
-  
-  @override
-    double get _rotationAngle {
+
+  double get _rotationAngle {
     final progress = (_dragPosition / _maxDrag).clamp(0.0, 1.0);
     return progress * 1.5708; // ~20 degrees max
   }
+
   Widget build(BuildContext context) {
     return Container(
       width: MediaQuery.of(context).size.width * 0.7,
@@ -106,7 +101,7 @@ class _HorizontalSliderState extends State<HorizontalSlider> {
         builder: (context, constraints) {
           // Calculate max drag distance (container width - icon width)
           _maxDrag = constraints.maxWidth - 70;
-          
+
           return GestureDetector(
             onHorizontalDragStart: (details) {
               setState(() {
@@ -123,7 +118,7 @@ class _HorizontalSliderState extends State<HorizontalSlider> {
             onHorizontalDragEnd: (details) {
               setState(() {
                 _isDragging = false;
-                
+
                 // Check if slider reached the end (90% threshold)
                 if (_dragPosition >= _maxDrag * 0.9) {
                   // Complete the slide
@@ -131,7 +126,7 @@ class _HorizontalSliderState extends State<HorizontalSlider> {
                   widget.onSlideComplete();
                 } else {
                   // Snap back to start
-                  _dragPosition=5.0;
+                  _dragPosition = 5.0;
                 }
               });
             },
@@ -152,33 +147,33 @@ class _HorizontalSliderState extends State<HorizontalSlider> {
                 children: [
                   // Green Progress Track
                   AnimatedContainer(
-                    duration: _isDragging 
-                        ? Duration.zero 
-                        : Duration(milliseconds: 300),
+                    duration:
+                        _isDragging
+                            ? Duration.zero
+                            : Duration(milliseconds: 300),
                     curve: Curves.easeOut,
-                    width: _dragPosition +65, // +70 for icon width
+                    width: _dragPosition + 65, // +70 for icon width
                     height: 70,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(35),
                       gradient: LinearGradient(
                         colors: [
-                          Color(0x245CD2) .withOpacity(0.8),
+                          Color(0x245CD2).withOpacity(0.8),
                           Color(0x245CD2).withOpacity(1.0),
                         ],
                       ),
                     ),
                     child: ClipRect(
-                      child: CustomPaint(
-                        painter: _DottedLinesPainter(),
-                      ),
+                      child: CustomPaint(painter: _DottedLinesPainter()),
                     ),
                   ),
-                  
+
                   // Sliding Car Icon
                   AnimatedPositioned(
-                    duration: _isDragging 
-                        ? Duration.zero 
-                        : Duration(milliseconds: 300),
+                    duration:
+                        _isDragging
+                            ? Duration.zero
+                            : Duration(milliseconds: 300),
                     curve: Curves.easeOut,
                     left: _dragPosition,
                     top: 5,
@@ -209,7 +204,7 @@ class _HorizontalSliderState extends State<HorizontalSlider> {
                       ),
                     ),
                   ),
-                  
+
                   // Text Hint (fades as you slide)
                   if (_dragPosition < _maxDrag * 0.3)
                     Center(
@@ -228,9 +223,9 @@ class _HorizontalSliderState extends State<HorizontalSlider> {
                                 ),
                               ),
                               SizedBox(width: 8),
-                                Icon(
-                                  Icons.arrow_forward,
-                                  color: Colors.grey[500],
+                              Icon(
+                                Icons.arrow_forward,
+                                color: Colors.grey[500],
                               ),
                             ],
                           ),
@@ -250,18 +245,16 @@ class _HorizontalSliderState extends State<HorizontalSlider> {
 class _DottedLinesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.6)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
+    final paint =
+        Paint()
+          ..color = Colors.white.withOpacity(0.6)
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke;
 
     final dashWidth = 10.0;
     final dashSpace = 8.0;
     // Y positions for the two dotted lines
-    final yPositions = [
-      size.height * 0.35,
-      size.height * 0.65,
-    ];
+    final yPositions = [size.height * 0.35, size.height * 0.65];
 
     for (final y in yPositions) {
       double startX = 12; // horizontal padding

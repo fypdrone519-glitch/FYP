@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../main_navigation.dart';
+import '../../services/auth_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -178,13 +179,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 width: double.infinity,
                 height: screenHeight * 0.07,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MainNavigation(),
-                      ),
-                    );
+                  onPressed: () async {
+                    if (_passwordController.text !=
+                        _confirmPasswordController.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Passwords do not match")),
+                      );
+                      return;
+                    }
+
+                    try {
+                      final user = await AuthService().signUp(
+                        _emailController.text,
+                        _passwordController.text,
+                      );
+
+                      if (user != null) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MainNavigation(),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(e.toString())));
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
@@ -211,7 +233,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 children: [
                   const Expanded(child: Divider()),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.04,
+                    ),
                     child: Text(
                       'Or Continue With',
                       style: TextStyle(
@@ -244,7 +268,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.017),
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenHeight * 0.017,
+                        ),
                         side: BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -272,7 +298,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.017),
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenHeight * 0.017,
+                        ),
                         side: BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

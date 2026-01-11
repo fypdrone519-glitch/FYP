@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
-import '../../theme/app_spacing.dart';
 import '../main_navigation.dart';
 import 'signup_screen.dart';
 
@@ -31,11 +30,12 @@ class _OldLoginScreenState extends State<OldLoginScreen> {
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     // Responsive sizing
-    final topSectionHeight = keyboardVisible ? screenHeight * 0.15 : screenHeight * 0.35;
+    final topSectionHeight =
+        keyboardVisible ? screenHeight * 0.15 : screenHeight * 0.35;
     final titleFontSize = screenHeight * 0.028;
     final iconSize = screenHeight * 0.08;
     final cardBorderRadius = screenWidth * 0.08;
-    
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Container(
@@ -63,7 +63,9 @@ class _OldLoginScreenState extends State<OldLoginScreen> {
                     if (!keyboardVisible) ...[
                       // Title text on gradient background
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.08,
+                        ),
                         child: Text(
                           'Log in to stay on\ntop of your tasks\nand projects.',
                           textAlign: TextAlign.center,
@@ -104,7 +106,7 @@ class _OldLoginScreenState extends State<OldLoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(height: screenHeight * 0.01),
-                        
+
                         // Login title
                         Center(
                           child: Text(
@@ -136,7 +138,8 @@ class _OldLoginScreenState extends State<OldLoginScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const SignUpScreen(),
+                                      builder:
+                                          (context) => const SignUpScreen(),
                                     ),
                                   );
                                 },
@@ -305,7 +308,9 @@ class _OldLoginScreenState extends State<OldLoginScreen> {
                           children: [
                             const Expanded(child: Divider()),
                             Padding(
-                              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenWidth * 0.04,
+                              ),
                               child: Text(
                                 'Or Continue With',
                                 style: TextStyle(
@@ -328,7 +333,10 @@ class _OldLoginScreenState extends State<OldLoginScreen> {
                                 onPressed: () {
                                   // Handle Apple sign in
                                 },
-                                icon: const Icon(Icons.apple, color: Colors.black),
+                                icon: const Icon(
+                                  Icons.apple,
+                                  color: Colors.black,
+                                ),
                                 label: Text(
                                   'Apple',
                                   style: TextStyle(
@@ -338,7 +346,9 @@ class _OldLoginScreenState extends State<OldLoginScreen> {
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(vertical: screenHeight * 0.017),
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: screenHeight * 0.017,
+                                  ),
                                   side: BorderSide(color: AppColors.border),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -366,7 +376,9 @@ class _OldLoginScreenState extends State<OldLoginScreen> {
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(vertical: screenHeight * 0.017),
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: screenHeight * 0.017,
+                                  ),
                                   side: BorderSide(color: AppColors.border),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
