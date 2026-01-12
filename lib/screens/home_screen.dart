@@ -64,7 +64,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Fixed Background Content (First 3 sections)
             Column(
               children: [
                 // Top Bar
@@ -100,7 +99,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                   ),
                 ),
 
-                // Big Headline
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.sm,
@@ -116,8 +114,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-
-                // Search Bar Section
                 Container(
                   color: AppColors.background,
                   child: Padding(
