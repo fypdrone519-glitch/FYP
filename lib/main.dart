@@ -1,6 +1,7 @@
 import 'package:car_listing_app/screens/home_screen.dart';
 import 'package:car_listing_app/screens/host/host_home_screen.dart';
 import 'package:car_listing_app/screens/host_navigation.dart';
+import 'package:car_listing_app/screens/main_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -31,8 +32,8 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.background,
         textTheme: GoogleFonts.interTextTheme(),
       ),
-      home: const HostNavigation(),
-      //home: const HomeScreenContent(),
+      //home: const HostNavigation(),
+      home: const MainNavigation(),
       //home: const WelcomeScreen(),
     );
   }

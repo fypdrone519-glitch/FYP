@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Background colors
-  static const Color foreground = Color(0xFFF7F9FB); // Dark Blue
+  static const Color foreground = Color(0xFFF7F9FB); 
   static const Color background = Color(0xFF09111C);
   static const Color cardSurface = Color(0xFFFFFFFF);
+  static const Color hostBackground = Color(0xffF0F0F0);
   
   // Text colors
   static const Color primaryText = Color(0xFF0F172A);
