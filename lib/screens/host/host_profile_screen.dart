@@ -1,11 +1,12 @@
 import 'package:car_listing_app/screens/host_navigation.dart';
+import 'package:car_listing_app/screens/main_navigation.dart';
+import 'package:car_listing_app/theme/app_colors.dart';
+import 'package:car_listing_app/theme/app_spacing.dart';
+import 'package:car_listing_app/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
-import '../theme/app_text_styles.dart';
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+class HostProfileScreen extends StatelessWidget {
+  const HostProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -119,13 +120,13 @@ class ProfileScreen extends StatelessWidget {
                       onTap: () {},
                     ),
                     _buildSettingItem(
-                      icon: Icons.how_to_reg_sharp,
-                      title: 'Become a Host',
+                      icon: Icons.car_rental,
+                      title: 'Find cars',
                       onTap: () {
                         Navigator.push(
                         context,
                         MaterialPageRoute<void>(
-                          builder: (context) => const HostNavigation(),
+                          builder: (context) => const MainNavigation(),
                         ),
                       );
                       },

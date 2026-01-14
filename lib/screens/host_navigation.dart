@@ -1,4 +1,6 @@
 import 'package:car_listing_app/screens/host/host_home_screen.dart';
+import 'package:car_listing_app/screens/host/add_car.dart';
+import 'package:car_listing_app/screens/host/host_profile_screen.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -18,7 +20,7 @@ class _HostNavigationState extends State<HostNavigation> {
     const InsightsScreen(),
     const AddCarScreen(),
     const InboxScreen(),
-    const ProfileScreen(),
+    const HostProfileScreen(),
   ];
 
   final List<NavigationItem> _navigationItems = [
@@ -95,7 +97,7 @@ class _HostNavigationState extends State<HostNavigation> {
             children: [
               Icon(
                 isSelected ? filledIcon : outlinedIcon,
-                color: isSelected ? AppColors.accent : AppColors.secondaryText,
+                color: isSelected ? Color(0xFF09111C) : AppColors.secondaryText,
                 size: 24,
               ),
               const SizedBox(height: 4),
@@ -103,7 +105,7 @@ class _HostNavigationState extends State<HostNavigation> {
                 label,
                 style: TextStyle(
                   fontSize: 11,
-                  color: isSelected ? AppColors.accent : AppColors.secondaryText,
+                  color: isSelected ? AppColors.background : AppColors.secondaryText,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -137,16 +139,6 @@ class InsightsScreen extends StatelessWidget {
   }
 }
 
-class AddCarScreen extends StatelessWidget {
-  const AddCarScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Add Car Screen - Coming Soon')),
-    );
-  }
-}
 
 class InboxScreen extends StatelessWidget {
   const InboxScreen({super.key});
@@ -159,13 +151,3 @@ class InboxScreen extends StatelessWidget {
   }
 }
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Profile Screen - Coming Soon')),
-    );
-  }
-}

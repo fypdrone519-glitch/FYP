@@ -68,7 +68,7 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.hostBackground,
       body: SafeArea(
         child: Stack(
           children: [
@@ -84,7 +84,7 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
                         'Share Lane',
                         style: AppTextStyles.h2(
                           context,
-                        ).copyWith(color: AppColors.lightText),
+                        )
                       ),
                       GestureDetector(
                         onTap: () {
@@ -117,13 +117,13 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
                       'Revenue Generated',
                       style: AppTextStyles.h2(
                         context,
-                      ).copyWith(color: AppColors.lightText),
+                      )
                     ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Container(
-                  color: AppColors.background,
+                  color: AppColors.hostBackground,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.sm,
@@ -142,8 +142,8 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
 
             // Scrollable Cars Near You Section (Overlay)
             DraggableScrollableSheet(
-              initialChildSize: 0.4, // Start at 40% of screen height
-              minChildSize: 0.4, // Minimum 40% of screen height
+              initialChildSize: 0.5, // Start at 50% of screen height
+              minChildSize: 0.5, // Minimum 40% of screen height
               maxChildSize: 0.90, // Maximum 95% of screen height
               builder: (context, scrollController) {
                 return Container(
@@ -221,21 +221,14 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
   Widget _buildRevenueChart(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.border,
-          width: 1,
-        ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Total Revenue Amount
           Text(
-            '\$${totalRevenue.toStringAsFixed(2)}',
+            '\PKR ${totalRevenue.toStringAsFixed(2)}',
             style: AppTextStyles.h1(context).copyWith(
-              color: AppColors.lightText,
+              //color: AppColors.lightText,
               fontSize: 32,
               fontWeight: FontWeight.bold,
             ),
@@ -312,7 +305,7 @@ Widget _buildProgressBar(BuildContext context) {
             child: Text(
               category.name,
               style: AppTextStyles.body(context).copyWith(
-                color: AppColors.lightText,
+                //color: AppColors.lightText,
               ),
             ),
           ),
