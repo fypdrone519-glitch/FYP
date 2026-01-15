@@ -1,3 +1,4 @@
+import 'package:car_listing_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../main_navigation.dart';
@@ -81,31 +82,41 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            TextField(
-              controller: otpSent ? _otp : _phone,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: otpSent ? "OTP" : "Phone Number",
-                hintText: otpSent ? "123456" : "+92XXXXXXXXXX",
+      body: Container(
+        decoration: BoxDecoration(
+          color: AppColors.foreground,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              TextField(
+                controller: otpSent ? _otp : _phone,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: otpSent ? "OTP" : "Phone Number",
+                  hintText: otpSent ? "123456" : "+92XXXXXXXXXX",
+                ),
               ),
-            ),
-
-            const SizedBox(height: 30),
-
-            ElevatedButton(
-              onPressed:
-                  loading
-                      ? null
-                      : otpSent
-                      ? verifyOTP
-                      : sendOTP,
-              child: Text(otpSent ? "Verify OTP" : "Send OTP"),
-            ),
-          ],
+        
+              const SizedBox(height: 30),
+        
+              ElevatedButton(
+                style: ButtonStyle(
+                  backgroundColor: MaterialStateProperty.all(
+                    loading ? Colors.grey : AppColors.accent,
+                  ),
+                ),
+                onPressed:
+                    loading
+                        ? null
+                        : otpSent
+                        ? verifyOTP
+                        : sendOTP,
+                child: Text(otpSent ? "Verify OTP" : "Send OTP", style: TextStyle(color: AppColors.cardSurface),),
+              ),
+            ],
+          ),
         ),
       ),
     );

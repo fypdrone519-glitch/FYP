@@ -16,7 +16,7 @@ class WelcomeScreenState extends State<WelcomeScreen> {
         children: [
           Positioned.fill(
             child: Image.asset(
-              'lib/assets/welcome_screen_image.png', // or Image.network for URL
+              'lib/assets/welcome_screen_image.png',
               fit: BoxFit.cover,
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:car_listing_app/screens/auth/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_svg/svg.dart';
 import '../../theme/app_colors.dart';
 import '../main_navigation.dart';
 import 'signup_screen.dart';
@@ -122,7 +123,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
 
               const Spacer(),
-
               // LOGIN BUTTON
               SizedBox(
                 width: double.infinity,
@@ -152,21 +152,28 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.lightText,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(27),
                     ),
                   ),
-                  child: const Text("Login"),
+                  child: const Text("Login", style: TextStyle(fontSize: 16)),
                 ),
               ),
 
               SizedBox(height: screenHeight * 0.02),
-
-              // PHONE LOGIN BUTTON (added, no UI broken)
+              // GOOGLE LOGIN BUTTON 
+               // login in with phone button
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: AppColors.accent),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(27),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  ),
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -175,7 +182,61 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     );
                   },
-                  child: const Text("Continue with Phone"),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Icon(
+                          Icons.phone,
+                          size: screenHeight * 0.025,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                      Center(
+                        child: Text("Continue with Phone", style: TextStyle(fontSize: 14)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              SizedBox(height: screenHeight * 0.025),
+              // login in with Google button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: AppColors.accent),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(27),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  ),
+                  onPressed: () {
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //     builder: (_) => const PhoneLoginScreen(),
+                    //   ),
+                    // );
+                  },
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: SvgPicture.asset(
+                        'lib/assets/google.svg',
+                        height: 30,
+                        width: 30,
+                      ),
+                      ),
+                      Center(
+                        child: Text("Continue with Google", style: TextStyle(fontSize: 14)),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
