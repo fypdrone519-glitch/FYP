@@ -21,10 +21,24 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
 
   // ================= SEND OTP =================
   Future<void> sendOTP() async {
+    String phoneNumber = _phone.text.trim();
+    
+    // Ensure phone number starts with country code
+    if (!phoneNumber.startsWith('+')) {
+      // If user enters number without +92, add it
+      if (phoneNumber.startsWith('0')) {
+        phoneNumber = '+92${phoneNumber.substring(1)}';
+      } else if (phoneNumber.startsWith('92')) {
+        phoneNumber = '+$phoneNumber';
+      } else {
+        phoneNumber = '+92$phoneNumber';
+      }
+    }
+    
     setState(() => loading = true);
 
     await _auth.verifyPhone(
-      phone: _phone.text,
+      phone: phoneNumber,
       codeSent: (verificationId) {
         setState(() {
           _verificationId = verificationId;

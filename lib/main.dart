@@ -33,8 +33,8 @@ class MyApp extends StatelessWidget {
         textTheme: GoogleFonts.interTextTheme(),
       ),
       //home: const HostNavigation(),
-      home: const MainNavigation(),
-      //home: const WelcomeScreen(),
+      //home: const MainNavigation(),
+      home: const WelcomeScreen(),
     );
   }
 }

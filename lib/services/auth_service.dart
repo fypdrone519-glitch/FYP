@@ -35,19 +35,38 @@ class AuthService {
     required Function(String verificationId) codeSent,
     required Function(String error) onError,
   }) async {
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phone,
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        await _auth.signInWithCredential(credential);
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        onError(e.message ?? "Phone auth failed");
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        codeSent(verificationId);
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {},
-    );
+    try {
+      print('🔥 Starting phone verification for: $phone');
+      
+      await _auth.verifyPhoneNumber(
+        phoneNumber: phone,
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          print('✅ Phone verification completed automatically');
+          try {
+            await _auth.signInWithCredential(credential);
+            print('✅ Auto sign-in successful');
+          } catch (e) {
+            print('❌ Auto sign-in error: $e');
+            onError(e.toString());
+          }
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          print('❌ Verification failed: ${e.code} - ${e.message}');
+          onError('${e.code}: ${e.message ?? "Phone auth failed"}');
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          print('📱 Code sent! Verification ID: $verificationId');
+          codeSent(verificationId);
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          print('⏱️ Auto-retrieval timeout for: $verificationId');
+        },
+      );
+    } catch (e) {
+      print('❌ Exception in verifyPhone: $e');
+      onError(e.toString());
+    }
   }
 
   Future<User?> verifyOTP(String verificationId, String smsCode) async {
