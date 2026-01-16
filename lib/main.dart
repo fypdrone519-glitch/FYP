@@ -32,9 +32,9 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.background,
         textTheme: GoogleFonts.interTextTheme(),
       ),
-      //home: const HostNavigation(),
+      home: const HostNavigation(),
       //home: const MainNavigation(),
-      home: const WelcomeScreen(),
+      //home: const WelcomeScreen(),
     );
   }
 }

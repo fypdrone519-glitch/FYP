@@ -44,6 +44,7 @@ dependencies:
   firebase_core: ^4.3.0
   google_sign_in: ^7.2.0
   flutter_svg: ^2.0.0
+  image_picker: ^1.0.7
 
 dev_dependencies:
   flutter_test:

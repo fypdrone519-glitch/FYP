@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
@@ -20,6 +23,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
   final TextEditingController _carAbilityController = TextEditingController();
 
   // State variables
+  Set<String> _selectedFeatures = {}; // Changed from String? to Set<String>
   int _selectedTab = 0; // 0 = Car Brand, 1 = Car Model
   String? _selectedBrand;
   String? _selectedColor;
@@ -27,6 +31,10 @@ class _AddCarScreenState extends State<AddCarScreen> {
   bool _termsAccepted = false;
   int _characterCount = 0;
   final int _maxCharacters = 1000;
+
+  //image selection variable
+  List<File> _selectedImages = [];
+  final ImagePicker _picker = ImagePicker();
 
   // Car brands data
   final List<String> regularBrands = ['Changan', 'Honda', 'Toyota', 'Nissan', 'Mercedes'];
@@ -39,6 +47,41 @@ class _AddCarScreenState extends State<AddCarScreen> {
     {'name': 'Blue', 'color': Colors.blue},
     {'name': 'Black', 'color': Colors.black},
   ];
+  
+  // Method to pick images from gallery
+  Future<void> _pickImagesFromGallery() async {
+    try {
+      final List<XFile> images = await _picker.pickMultiImage();
+      
+      if (images.isNotEmpty) {
+        setState(() {
+          _selectedImages.addAll(images.map((image) => File(image.path)).toList());
+        });
+      }
+    } catch (e) {
+      // Handle error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking images: $e')),
+      );
+    }
+  }
+
+  // Method to pick image from camera (for later)
+  Future<void> _pickImageFromCamera() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+      
+      if (image != null) {
+        setState(() {
+          _selectedImages.add(File(image.path));
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error taking photo: $e')),
+      );
+    }
+  }
 
   // Fuel types
   final List<String> fuelTypes = ['Electric', 'Petrol', 'Diesel', 'Hybrid'];
@@ -125,8 +168,8 @@ class _AddCarScreenState extends State<AddCarScreen> {
             _buildFuelTypeSection(),
             const SizedBox(height: AppSpacing.sm),
 
-            // Car ability text area
-            _buildCarAbilityTextArea(),
+            // Carfeatures section
+            _buildFeatuers(),
             const SizedBox(height: AppSpacing.md),
 
             // Terms & Continue checkbox
@@ -277,16 +320,15 @@ class _AddCarScreenState extends State<AddCarScreen> {
           vertical: AppSpacing.xs,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFE5E5E5) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? const Color(0xFF4A4A4A) : Colors.transparent,
+            color: isSelected ? AppColors.accent : Colors.transparent,
           ),
         ),
         child: Text(
           brand,
           style: AppTextStyles.body(context).copyWith(
-            color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
+            color: isSelected ? AppColors.accent : AppColors.secondaryText,
           ),
         ),
       ),
@@ -294,44 +336,133 @@ class _AddCarScreenState extends State<AddCarScreen> {
   }
 
   Widget _buildImageUploadSection() {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Upload Cars images',
-            style: AppTextStyles.body(context),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.hostBackground,
-              borderRadius: BorderRadius.circular(16),
+  return Container(
+    padding: const EdgeInsets.all(AppSpacing.sm),
+    decoration: BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: AppColors.border.withOpacity(0.2)),
+    ),
+    child: Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Upload Cars images',
+              style: AppTextStyles.body(context),
             ),
-            child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.camera_alt, color: AppColors.secondaryText),
-                onPressed: () {
-                  // Handle camera action
-                },
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.hostBackground,
+                borderRadius: BorderRadius.circular(16),
               ),
-              IconButton(
-                icon: const Icon(Icons.photo_library, color: AppColors.secondaryText),
-                onPressed: () {
-                  // Handle gallery action
-                },
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.camera_alt, color: AppColors.secondaryText),
+                    onPressed: _pickImageFromCamera,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.photo_library, color: AppColors.secondaryText),
+                    onPressed: _pickImagesFromGallery,
+                  ),
+                ],
               ),
-            ],
+            )
+          ],
+        ),
+        // Display selected images
+        if (_selectedImages.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            height: 100,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _selectedImages.length,
+              itemBuilder: (context, index) {
+                return Stack(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(right: AppSpacing.xs),
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        image: DecorationImage(
+                          image: FileImage(_selectedImages[index]),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedImages.removeAt(index);
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
-          )
         ],
-      ),
+      ],
+    ),
+  );
+}
+
+  Widget _buildFeatuers(){
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionTitle('Features'),
+            TextButton(
+              onPressed: () {
+                // Handle "See All" action
+              },
+              child: Text(
+                'See All',
+                style: AppTextStyles.body(context).copyWith(
+                  color: AppColors.accent,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _buildFeatures(Icons.ac_unit, "Air Conditioning"),
+          const SizedBox(height: AppSpacing.sm),
+        _buildFeatures(Icons.map, "GPS Navigation"),
+          const SizedBox(height: AppSpacing.sm),
+        _buildFeatures(Icons.bluetooth, "Bluetooth"),
+          const SizedBox(height: AppSpacing.sm),
+        _buildFeatures(Icons.wifi, "Wi-Fi"),
+        const SizedBox(height: AppSpacing.sm),
+        _buildFeatures(Icons.speed, "Cruise Control"),
+        const SizedBox(height: AppSpacing.sm),
+        _buildFeatures(Icons.child_friendly, "Child Seat"),
+      ],
     );
   }
 
@@ -442,6 +573,55 @@ class _AddCarScreenState extends State<AddCarScreen> {
     );
   }
 
+  Widget _buildFeatures(IconData icon, String title) {
+  final isSelected = _selectedFeatures.contains(title);
+  
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        if (isSelected) {
+          _selectedFeatures.remove(title); // Deselect if already selected
+        } else {
+          _selectedFeatures.add(title); // Add to selection
+        }
+      });
+    },
+    child: Container(
+      width: MediaQuery.of( context).size.width*0.9,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        //color: isSelected ? AppColors.accent.withOpacity(0.2) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: isSelected ? AppColors.accent : AppColors.secondaryText,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            title,
+            style: AppTextStyles.body(context).copyWith(
+              color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
   Widget _buildCarAbilityTextArea() {
     return Container(
       decoration: BoxDecoration(
@@ -512,8 +692,8 @@ class _AddCarScreenState extends State<AddCarScreen> {
       child: ElevatedButton(
         onPressed: _termsAccepted ? _handleSubmit : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.background,
-          disabledBackgroundColor: Colors.grey.shade300,
+          backgroundColor: AppColors.accent,
+          disabledBackgroundColor: AppColors.accent.withOpacity(0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

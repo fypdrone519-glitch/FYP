@@ -9,7 +9,7 @@ class AppColors {
   
   // Text colors
   static const Color primaryText = Color(0xFF0F172A);
-  static const Color secondaryText = Color(0xFFB1BAC5);
+  static const Color secondaryText = Color.fromARGB(255, 136, 143, 152);
   static const Color lightText = Color(0xFFFFFFFF);
   
   // Border/Divider colors
