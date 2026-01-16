@@ -1,6 +1,7 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -23,7 +24,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
   final TextEditingController _carAbilityController = TextEditingController();
 
   // State variables
-  Set<String> _selectedFeatures = {}; // Changed from String? to Set<String>
+  Set<String> _selectedFeatures = {}; // to store selected features
   int _selectedTab = 0; // 0 = Car Brand, 1 = Car Model
   String? _selectedBrand;
   String? _selectedColor;
@@ -31,6 +32,13 @@ class _AddCarScreenState extends State<AddCarScreen> {
   bool _termsAccepted = false;
   int _characterCount = 0;
   final int _maxCharacters = 1000;
+  //varibale to store the location of the car
+  LatLng? carLocation;
+  GoogleMapController? _mapController;
+  LatLng _currentPosition = const LatLng(33.6844, 73.0479); // Default to Islamabad
+  bool _isLoadingLocation = false;
+  Set<Marker> _markers = {};
+  bool _isInteractingWithMap = false; //to aviod scrolling when interacting with the map
 
   //image selection variable
   List<File> _selectedImages = [];
@@ -48,6 +56,93 @@ class _AddCarScreenState extends State<AddCarScreen> {
     {'name': 'Black', 'color': Colors.black},
   ];
   
+  // Method to get current location
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isLoadingLocation = true;
+    });
+
+    try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enable location services')),
+        );
+        setState(() {
+          _isLoadingLocation = false;
+        });
+        return;
+      }
+
+      // Check location permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permission denied')),
+          );
+          setState(() {
+            _isLoadingLocation = false;
+          });
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location permissions are permanently denied'),
+          ),
+        );
+        setState(() {
+          _isLoadingLocation = false;
+        });
+        return;
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        carLocation = LatLng(position.latitude, position.longitude);
+        _currentPosition = carLocation!;
+        
+        // Add marker at current location
+        _markers.clear();
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('car_location'),
+            position: carLocation!,
+            infoWindow: const InfoWindow(title: 'Car Location'),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          ),
+        );
+        
+        _isLoadingLocation = false;
+      });
+
+      // Animate camera to current location
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(carLocation!, 15),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location saved successfully')),
+      );
+    } catch (e) {
+      setState(() {
+        _isLoadingLocation = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error getting location: $e')),
+      );
+    }
+  }
+
   // Method to pick images from gallery
   Future<void> _pickImagesFromGallery() async {
     try {
@@ -127,6 +222,9 @@ class _AddCarScreenState extends State<AddCarScreen> {
         ),
       ),
       body: SingleChildScrollView(
+        physics: _isInteractingWithMap 
+      ? const NeverScrollableScrollPhysics() 
+      : const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,7 +252,11 @@ class _AddCarScreenState extends State<AddCarScreen> {
 
             // Car Brand selection (when tab 0 is selected)
             if (_selectedTab == 0) _buildCarBrandSelection(),
+            const SizedBox(height: AppSpacing.md),
+            _buildSectionTitle("Location"),
             const SizedBox(height: AppSpacing.sm),
+            _buildLocation(),
+            const SizedBox(height: AppSpacing.md), 
 
             // Image upload area
             _buildImageUploadSection(),
@@ -169,7 +271,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
             const SizedBox(height: AppSpacing.sm),
 
             // Carfeatures section
-            _buildFeatuers(),
+            _buildFeaturesSection(),
             const SizedBox(height: AppSpacing.md),
 
             // Terms & Continue checkbox
@@ -179,6 +281,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
             // Submit button
             _buildSubmitButton(),
             const SizedBox(height: AppSpacing.lg),
+            
           ],
         ),
       ),
@@ -335,6 +438,158 @@ class _AddCarScreenState extends State<AddCarScreen> {
     );
   }
 
+  Widget _buildLocation() {
+  final size = MediaQuery.of(context).size;
+    return Container(
+      height: size.height * 0.3,
+      width: size.width,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border.withOpacity(0.2)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxHeight <= 0 || constraints.maxWidth <= 0) {
+              return const SizedBox.shrink();
+            }
+            
+            return Stack(
+              children: [
+                // Google Map with gesture handling
+                GestureDetector(
+                  onVerticalDragStart: (_) {},
+                  onHorizontalDragStart: (_) {},
+                  child: SizedBox(
+                    height: constraints.maxHeight,
+                    width: constraints.maxWidth,
+                    child: GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: _currentPosition,
+                        zoom: 14,
+                      ),
+                      onMapCreated: (GoogleMapController controller) {
+                        _mapController = controller;
+                      },
+                      markers: _markers,
+                      myLocationEnabled: true,
+                      myLocationButtonEnabled: false,
+                      zoomControlsEnabled: false,
+                      zoomGesturesEnabled: true,
+                      scrollGesturesEnabled: true,
+                      tiltGesturesEnabled: true,
+                      rotateGesturesEnabled: true,
+                      onTap: (LatLng position) {
+                        setState(() {
+                          carLocation = position;
+                          _markers.clear();
+                          _markers.add(
+                            Marker(
+                              markerId: const MarkerId('car_location'),
+                              position: position,
+                              infoWindow: const InfoWindow(title: 'Car Location'),
+                              icon: BitmapDescriptor.defaultMarkerWithHue(
+                                BitmapDescriptor.hueRed,
+                              ),
+                            ),
+                          );
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                
+                // Current Location Button (Bottom Right)
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: Material(
+                    elevation: 4,
+                    borderRadius: BorderRadius.circular(28),
+                    child: InkWell(
+                      onTap: _isLoadingLocation ? null : _getCurrentLocation,
+                      borderRadius: BorderRadius.circular(28),
+                      child: Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: _isLoadingLocation
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.accent,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.my_location,
+                                  color: AppColors.accent,
+                                  size: 24,
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Location Info (Top)
+                if (carLocation != null)
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            color: AppColors.accent,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Lat: ${carLocation!.latitude.toStringAsFixed(4)}, '
+                              'Lng: ${carLocation!.longitude.toStringAsFixed(4)}',
+                              style: AppTextStyles.meta(context),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildImageUploadSection() {
   return Container(
     padding: const EdgeInsets.all(AppSpacing.sm),
@@ -429,7 +684,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
   );
 }
 
-  Widget _buildFeatuers(){
+  Widget _buildFeaturesSection(){
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
