@@ -440,7 +440,19 @@ class _AddCarScreenState extends State<AddCarScreen> {
 
   Widget _buildLocation() {
   final size = MediaQuery.of(context).size;
-    return Container(
+  
+  return Listener(
+    onPointerDown: (_) {
+      setState(() {
+        _isInteractingWithMap = true;
+      });
+    },
+    onPointerUp: (_) {
+      setState(() {
+        _isInteractingWithMap = false;
+      });
+    },
+    child: Container(
       height: size.height * 0.3,
       width: size.width,
       decoration: BoxDecoration(
@@ -458,46 +470,42 @@ class _AddCarScreenState extends State<AddCarScreen> {
             
             return Stack(
               children: [
-                // Google Map with gesture handling
-                GestureDetector(
-                  onVerticalDragStart: (_) {},
-                  onHorizontalDragStart: (_) {},
-                  child: SizedBox(
-                    height: constraints.maxHeight,
-                    width: constraints.maxWidth,
-                    child: GoogleMap(
-                      initialCameraPosition: CameraPosition(
-                        target: _currentPosition,
-                        zoom: 14,
-                      ),
-                      onMapCreated: (GoogleMapController controller) {
-                        _mapController = controller;
-                      },
-                      markers: _markers,
-                      myLocationEnabled: true,
-                      myLocationButtonEnabled: false,
-                      zoomControlsEnabled: false,
-                      zoomGesturesEnabled: true,
-                      scrollGesturesEnabled: true,
-                      tiltGesturesEnabled: true,
-                      rotateGesturesEnabled: true,
-                      onTap: (LatLng position) {
-                        setState(() {
-                          carLocation = position;
-                          _markers.clear();
-                          _markers.add(
-                            Marker(
-                              markerId: const MarkerId('car_location'),
-                              position: position,
-                              infoWindow: const InfoWindow(title: 'Car Location'),
-                              icon: BitmapDescriptor.defaultMarkerWithHue(
-                                BitmapDescriptor.hueRed,
-                              ),
-                            ),
-                          );
-                        });
-                      },
+                // Google Map
+                SizedBox(
+                  height: constraints.maxHeight,
+                  width: constraints.maxWidth,
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: _currentPosition,
+                      zoom: 14,
                     ),
+                    onMapCreated: (GoogleMapController controller) {
+                      _mapController = controller;
+                    },
+                    markers: _markers,
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
+                    zoomGesturesEnabled: true,
+                    scrollGesturesEnabled: true,
+                    tiltGesturesEnabled: true,
+                    rotateGesturesEnabled: true,
+                    onTap: (LatLng position) {
+                      setState(() {
+                        carLocation = position;
+                        _markers.clear();
+                        _markers.add(
+                          Marker(
+                            markerId: const MarkerId('car_location'),
+                            position: position,
+                            infoWindow: const InfoWindow(title: 'Car Location'),
+                            icon: BitmapDescriptor.defaultMarkerWithHue(
+                              BitmapDescriptor.hueRed,
+                            ),
+                          ),
+                        );
+                      });
+                    },
                   ),
                 ),
                 
@@ -587,8 +595,9 @@ class _AddCarScreenState extends State<AddCarScreen> {
           },
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildImageUploadSection() {
   return Container(
