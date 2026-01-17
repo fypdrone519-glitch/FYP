@@ -1,8 +1,12 @@
 import 'dart:io';
+import 'package:car_listing_app/screens/host_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
@@ -22,8 +26,10 @@ class _AddCarScreenState extends State<AddCarScreen> {
   final TextEditingController _drivingLicenseController = TextEditingController();
   final TextEditingController _carRegistrationController = TextEditingController();
   final TextEditingController _carAbilityController = TextEditingController();
+  final TextEditingController _rentPerDayController = TextEditingController();
 
   // State variables
+  Set<String> _drivingOptions = {};
   Set<String> _selectedFeatures = {}; // to store selected features
   int _selectedTab = 0; // 0 = Car Brand, 1 = Car Model
   String? _selectedBrand;
@@ -43,6 +49,14 @@ class _AddCarScreenState extends State<AddCarScreen> {
   //image selection variable
   List<File> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
+  
+  // Firebase instances
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
+  // Loading state
+  bool _isSubmitting = false;
 
   // Car brands data
   final List<String> regularBrands = ['Changan', 'Honda', 'Toyota', 'Nissan', 'Mercedes'];
@@ -202,6 +216,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
     _drivingLicenseController.dispose();
     _carRegistrationController.dispose();
     _carAbilityController.dispose();
+    _rentPerDayController.dispose();
     super.dispose();
   }
 
@@ -241,6 +256,8 @@ class _AddCarScreenState extends State<AddCarScreen> {
             // Car Registration Number
             _buildTextField(_carRegistrationController, 'Car Registration Number'),
             const SizedBox(height: AppSpacing.md),
+            _buildTextField(_rentPerDayController, 'Renting Price per day'),
+            const SizedBox(height: AppSpacing.md),
 
             // Car information section
             _buildSectionTitle('Car information'),
@@ -270,6 +287,9 @@ class _AddCarScreenState extends State<AddCarScreen> {
             _buildFuelTypeSection(),
             const SizedBox(height: AppSpacing.sm),
 
+            // Driving Options section
+            _buildDrivingOptionsSection(),
+            const SizedBox(height: AppSpacing.md),
             // Carfeatures section
             _buildFeaturesSection(),
             const SizedBox(height: AppSpacing.md),
@@ -693,6 +713,70 @@ class _AddCarScreenState extends State<AddCarScreen> {
   );
 }
 
+  Widget _buildDrivingOptionsSection(){
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AppSpacing.lg),
+        _buildSectionTitle('Driving Options'),
+        const SizedBox(height: AppSpacing.md),
+        _buildDrivingOptions(Icons.directions_car, "Self Driving"),
+          const SizedBox(height: AppSpacing.sm),
+        _buildDrivingOptions(Icons.person, "With Driver"),
+          const SizedBox(height: AppSpacing.sm),
+      ],
+    );
+  }
+  
+  Widget _buildDrivingOptions(IconData icon, String title) {
+  final isSelected = _drivingOptions.contains(title);
+  
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        if (isSelected) {
+          _drivingOptions.remove(title); // Deselect if already selected
+        } else {
+          _drivingOptions.add(title); // Add to selection
+        }
+      });
+    },
+    child: Container(
+      width: MediaQuery.of( context).size.width*0.9,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        //color: isSelected ? AppColors.accent.withOpacity(0.2) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: isSelected ? AppColors.accent : AppColors.secondaryText,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            title,
+            style: AppTextStyles.body(context).copyWith(
+              color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
   Widget _buildFeaturesSection(){
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -851,7 +935,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
       });
     },
     child: Container(
-      width: MediaQuery.of( context).size.width*0.9,
+      width: MediaQuery.of(context).size.width * 0.9,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
@@ -954,7 +1038,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: _termsAccepted ? _handleSubmit : null,
+        onPressed: (_termsAccepted && !_isSubmitting) ? _handleSubmit : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accent,
           disabledBackgroundColor: AppColors.accent.withOpacity(0.3),
@@ -962,37 +1046,275 @@ class _AddCarScreenState extends State<AddCarScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        child: Text(
-          'Submit',
-          style: AppTextStyles.button(context),
-        ),
+        child: _isSubmitting
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(
+                'Submit',
+                style: AppTextStyles.button(context),
+              ),
       ),
     );
   }
 
-  void _handleSubmit() {
-    // Handle form submission
+  Future<void> _handleSubmit() async {
+    
+    // Validate form fields
     if (_fullNameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _contactController.text.isEmpty ||
-        _drivingLicenseController.text.isEmpty ||
         _carRegistrationController.text.isEmpty ||
         _selectedBrand == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in all required fields'),
           duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    // TODO: Implement actual submission logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Car added successfully!'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    // Validate location
+    if (carLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a location for your car'),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate driving options
+    if (_drivingOptions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select at least one driving option'),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate rent per day
+    if (_rentPerDayController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter the rent per day'),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate images
+    // if (_selectedImages.isEmpty) {
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(
+    //       content: Text('Please upload at least one car image'),
+    //       duration: Duration(seconds: 2),
+    //       backgroundColor: Colors.red,
+    //     ),
+    //   );
+    //   return;
+    // }
+
+    // Get current user
+    final User? currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to add a car'),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      // Upload images to Firebase Storage
+      //List<String> imageUrls = await _uploadImages(currentUser.uid);
+
+      // Create vehicle document in Firestore
+      final vehicleRef = await _saveVehicleData(
+        currentUser.uid
+        //imageUrls,
+      );
+
+
+      // Create damage_pool document (one-to-one with vehicle)
+      await _createDamagePool(vehicleRef.id);
+
+      // Update owner's vehicle count
+      await _updateOwnerVehicleCount(currentUser.uid);
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(
+            content: Text('Car added successfully!'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.green.withOpacity(0.8),
+          ),
+        );
+        
+        // Navigate back after successful submission
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => HostNavigation()),
+          (route) => false,
+        );
+        // Future.delayed(const Duration(seconds: 2), () {
+        //   if (mounted) Navigator.pop(context);
+        // });
+
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding car: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  /// Upload images to Firebase Storage and return their URLs
+  Future<List<String>> _uploadImages(String userId) async {
+    List<String> imageUrls = [];
+    
+    for (int i = 0; i < _selectedImages.length; i++) {
+      final imageFile = _selectedImages[i];
+      final fileName = 'vehicle_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+      final storageRef = _storage.ref().child('vehicles/$userId/$fileName');
+      
+      try {
+        await storageRef.putFile(imageFile);
+        final downloadUrl = await storageRef.getDownloadURL();
+        imageUrls.add(downloadUrl);
+      } catch (e) {
+        throw Exception('Failed to upload image ${i + 1}: $e');
+      }
+    }
+    
+    return imageUrls;
+  }
+
+  /// Save vehicle data to Firestore
+  Future<DocumentReference> _saveVehicleData(
+    String ownerId,
+    //List<String> imageUrls,
+  ) async {
+    // Determine driving_options based on user selection
+    String drivingOptions;
+    if (_drivingOptions.contains('Self Driving') && _drivingOptions.contains('With Driver')) {
+      drivingOptions = 'Both';
+    } else if (_drivingOptions.contains('Self Driving')) {
+      drivingOptions = 'Self Driving';
+    } else if (_drivingOptions.contains('With Driver')) {
+      drivingOptions = 'With Driver';
+    } else {
+      // Default to empty if nothing selected (though this shouldn't happen if validation is in place)
+      drivingOptions = '';
+    }
+
+    // Parse rent per day (convert to double)
+    double rentPerDay = 0.0;
+    if (_rentPerDayController.text.trim().isNotEmpty) {
+      rentPerDay = double.tryParse(_rentPerDayController.text.trim()) ?? 0.0;
+    }
+
+    final vehicleData = {
+      'owner_id': ownerId,
+      'make': _selectedBrand ?? '',
+      'model': '', // Add model field later if needed
+      'year': DateTime.now().year, // Default to current year, can be added to form later
+      //'images': imageUrls,
+      'features': _selectedFeatures.toList(),
+      'registration_number': _carRegistrationController.text.trim(),
+      'market_value': 0, // Add market_value field to form later
+      'self_drive_allowed': true, // Add this option to form later
+      'with_driver_only': false, // Add this option to form later
+      'driving_options': drivingOptions, // Save driving options
+      'rent_per_day': rentPerDay, // Save rent per day
+      'created_at': FieldValue.serverTimestamp(),
+      'recorded_damages': [],
+      'location': {
+        'latitude': carLocation!.latitude,
+        'longitude': carLocation!.longitude,
+      },
+      'color': _selectedColor,
+      'fuel_type': _selectedFuelType,
+      'description': _carAbilityController.text.trim(),
+      // Owner information stored with vehicle
+      'owner_name': _fullNameController.text.trim(),
+      'owner_email': _emailController.text.trim(),
+      'owner_contact': _contactController.text.trim(),
+    };
+
+    final vehicleRef = await _firestore.collection('vehicles').add(vehicleData);
+    return vehicleRef;
+  }
+
+  /// Create damage_pool document for the vehicle
+  Future<void> _createDamagePool(String vehicleId) async {
+    final damagePoolData = {
+      'vehicle_id': vehicleId,
+      'current_balance': 0.0,
+      'last_contribution_at': null,
+      'payment_status': 'pending',
+      'created_at': FieldValue.serverTimestamp(),
+    };
+
+    await _firestore.collection('damage_pools').doc(vehicleId).set(damagePoolData);
+  }
+
+  /// Update owner's vehicle count
+  Future<void> _updateOwnerVehicleCount(String ownerId) async {
+    final ownerRef = _firestore.collection('owners').doc(ownerId);
+    
+    await _firestore.runTransaction((transaction) async {
+      final ownerDoc = await transaction.get(ownerRef);
+      
+      if (ownerDoc.exists) {
+        final currentCount = ownerDoc.data()?['no_of_vehicles'] ?? 0;
+        transaction.update(ownerRef, {
+          'no_of_vehicles': currentCount + 1,
+        });
+      } else {
+        // Create owner document if it doesn't exist
+        transaction.set(ownerRef, {
+          'owner_id': ownerId,
+          'no_of_vehicles': 1,
+          'damages_claimed': 0,
+          'created_at': FieldValue.serverTimestamp(),
+          'user_id': ownerId, // Link to user document
+        });
+      }
+    });
   }
 }
