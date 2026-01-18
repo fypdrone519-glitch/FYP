@@ -29,6 +29,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
   final TextEditingController _rentPerDayController = TextEditingController();
 
   // State variables
+  String? _transmissionType;
   Set<String> _drivingOptions = {};
   Set<String> _selectedFeatures = {}; // to store selected features
   int _selectedTab = 0; // 0 = Car Brand, 1 = Car Model
@@ -245,9 +246,9 @@ class _AddCarScreenState extends State<AddCarScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Car owner information section
-            _buildSectionTitle('Car owner information'),
+            _buildSectionTitle('General information'),
             const SizedBox(height: AppSpacing.sm),
-            _buildTextField(_fullNameController, 'Full Name'),
+            _buildTextField(_fullNameController, 'Car name'),
             const SizedBox(height: AppSpacing.sm),
             _buildTextField(_emailController, 'Email Addresses'),
             const SizedBox(height: AppSpacing.sm),
@@ -290,6 +291,10 @@ class _AddCarScreenState extends State<AddCarScreen> {
             // Driving Options section
             _buildDrivingOptionsSection(),
             const SizedBox(height: AppSpacing.md),
+
+            _buildTransmissionTypeSection(),
+            const SizedBox(height: AppSpacing.md),
+
             // Carfeatures section
             _buildFeaturesSection(),
             const SizedBox(height: AppSpacing.md),
@@ -316,6 +321,12 @@ class _AddCarScreenState extends State<AddCarScreen> {
   }
 
   Widget _buildTextField(TextEditingController controller, String hint) {
+    TextInputType keyboardType = TextInputType.text; // Default
+  
+  if (hint.toLowerCase().contains('renting price per day') || 
+      hint.toLowerCase().contains('contact')) {
+    keyboardType = TextInputType.number;
+  }
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -324,6 +335,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
       ),
       child: TextField(
         controller: controller,
+        keyboardType: keyboardType,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: AppTextStyles.meta(context),
@@ -777,6 +789,70 @@ class _AddCarScreenState extends State<AddCarScreen> {
   );
 }
 
+    Widget _buildTransmissionTypeSection(){
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AppSpacing.lg),
+        _buildSectionTitle('Transmission Type'),
+        const SizedBox(height: AppSpacing.md),
+        _buildTransmission(Icons.directions_car, "Manual"),
+          const SizedBox(height: AppSpacing.sm),
+        _buildTransmission(Icons.person, "Automatic"),
+          const SizedBox(height: AppSpacing.sm),
+      ],
+    );
+  }
+
+   Widget _buildTransmission(IconData icon, String title) {
+    final isSelected = _transmissionType == title; // Check if this option is selected
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isSelected) {
+            _transmissionType = null; // Deselect if already selected
+          } else {
+            _transmissionType = title; // Set as the only selected option
+          }
+        });
+      },
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.accent.withOpacity(0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? AppColors.accent : AppColors.secondaryText,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              title,
+              style: AppTextStyles.body(context).copyWith(
+                color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFeaturesSection(){
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1070,7 +1146,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
         _emailController.text.isEmpty ||
         _contactController.text.isEmpty ||
         _carRegistrationController.text.isEmpty ||
-        _selectedBrand == null) {
+        _selectedBrand == null || _transmissionType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in all required fields'),
@@ -1267,11 +1343,12 @@ class _AddCarScreenState extends State<AddCarScreen> {
         'latitude': carLocation!.latitude,
         'longitude': carLocation!.longitude,
       },
+      'transmissionType': _transmissionType ?? 'Not specified', 
       'color': _selectedColor,
       'fuel_type': _selectedFuelType,
       'description': _carAbilityController.text.trim(),
       // Owner information stored with vehicle
-      'owner_name': _fullNameController.text.trim(),
+      'car_name': _fullNameController.text.trim(),
       'owner_email': _emailController.text.trim(),
       'owner_contact': _contactController.text.trim(),
     };

@@ -1,11 +1,35 @@
+import 'package:car_listing_app/screens/auth/login_screen.dart';
 import 'package:car_listing_app/screens/host_navigation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+    Future<void> _logout(BuildContext context) async {
+  try {
+    await FirebaseAuth.instance.signOut();
+    
+    // Navigate to login screen and remove all previous routes
+    if (mounted) {
+      Navigator.pushReplacement(context, 
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error logging out: $e')),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -27,24 +51,71 @@ class ProfileScreen extends StatelessWidget {
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('Logout'),
-                            content: const Text('Are you sure you want to logout?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context); // Close dialog
-                                  // Add logout logic here
-                                },
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red,
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            contentPadding: const EdgeInsets.all(24),
+                            title: Center(
+                              child: Text(
+                                'Confirm logout',
+                                style: AppTextStyles.h2(context).copyWith(
+                                  //fontWeight: FontWeight.w600,
                                 ),
-                                child: const Text('Logout'),
                               ),
-                            ],
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Are you sure you want to log out?',
+                                  textAlign: TextAlign.center,
+                                  style: AppTextStyles.body(context).copyWith(
+                                    color: AppColors.secondaryText,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                // Log out button
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 48,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(context); // Close dialog
+                                      _logout(context);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red, // Burgundy/wine color
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    child: const Text(
+                                      'Log out',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                // Cancel button
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text(
+                                    'Cancel',
+                                    style: TextStyle(
+                                      color: AppColors.secondaryText,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },

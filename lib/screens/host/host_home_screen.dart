@@ -2,9 +2,10 @@ import 'package:car_listing_app/models/car.dart';
 import 'package:car_listing_app/theme/app_colors.dart';
 import 'package:car_listing_app/theme/app_spacing.dart';
 import 'package:car_listing_app/theme/app_text_styles.dart';
-import 'package:car_listing_app/widgets/car_card.dart';
 import 'package:car_listing_app/widgets/host_car_card.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HostHomeScreen extends StatefulWidget {
   const HostHomeScreen({super.key});
@@ -34,36 +35,91 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
       color: const Color(0xFFFFC857), // Yellow/Orange
     ),
   ];
-  final List<Car> _cars = [
-    Car(
-      id: '1',
-      make: 'Toyota',
-      model: 'Corolla',
-      imageUrl: '',
-      rating: 4.8,
-      trips: 120,
-      pricePerDay: 5000,
-      features: ['Automatic', 'AC', 'Bluetooth'],
-      badges: ['Instant', 'Verified'],
-      latitude: 24.8607,
-      longitude: 67.0011,
-    ),
-    Car(
-      id: '2',
-      make: 'Honda',
-      model: 'Civic',
-      imageUrl: '',
-      rating: 4.9,
-      trips: 85,
-      pricePerDay: 6000,
-      features: ['Automatic', 'AC', 'Navigation'],
-      badges: ['Delivery', 'Verified'],
-      latitude: 24.8607,
-      longitude: 67.0011,
-    ),
-  ];
+  
+  List<Car> _cars = [];
+  bool _isLoading = true;
+  
+  // Firebase instances
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   double get totalAmount => revenueCategories.fold(0.0, (sum, cat) => sum + cat.amount);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCars();
+  }
+
+  Future<void> _loadCars() async {
+    final User? currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final QuerySnapshot vehiclesSnapshot = await _firestore
+          .collection('vehicles')
+          .where('owner_id', isEqualTo: currentUser.uid)
+          .get();
+
+      final List<Car> cars = vehiclesSnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // Get features - take first 3
+        List<String> features = [];
+        if (data['features'] != null && data['features'] is List) {
+          features = List<String>.from(data['features']).take(3).toList();
+        }
+        
+        // Get location
+        double? latitude;
+        double? longitude;
+        if (data['location'] != null) {
+          final location = data['location'] as Map<String, dynamic>;
+          latitude = (location['latitude'] as num?)?.toDouble();
+          longitude = (location['longitude'] as num?)?.toDouble();
+        }
+        
+        // Get rent per day
+        double rentPerDay = 0.0;
+        if (data['rent_per_day'] != null) {
+          rentPerDay = (data['rent_per_day'] as num).toDouble();
+        }
+        
+        return Car(
+          id: doc.id,
+          make: data['make'] ?? '',
+          model: data['car_name'] ?? '', // car_name is used as model so fullName will be "make car_name"
+          imageUrl: '', // Leave empty as per user request
+          rating: 0.0, // Default value
+          trips: 0, // Default value
+          pricePerDay: rentPerDay,
+          features: features,
+          badges: [], // Default empty
+          latitude: latitude,
+          longitude: longitude,
+        );
+      }).toList();
+
+      setState(() {
+        _cars = cars;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading cars: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,19 +248,29 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
 
                       // Scrollable Car Cards List
                       Expanded(
-                        child: ListView.builder(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                          ),
-                          itemCount: _cars.length,
-                          itemBuilder: (context, index) {
-                            return HostCarCard(car: _cars[index],onTap: () {
-                              
-                            },
-                            ); // Placeholder for car cards
-                          }
-                        ),
+                        child: _isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(),
+                              )
+                            : _cars.isEmpty
+                                ? const Center(
+                                    child: Text('No vehicles found'),
+                                  )
+                                : ListView.builder(
+                                    controller: scrollController,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.sm,
+                                    ),
+                                    itemCount: _cars.length,
+                                    itemBuilder: (context, index) {
+                                      return HostCarCard(
+                                        car: _cars[index],
+                                        onTap: () {
+                                          // Handle edit action
+                                        },
+                                      );
+                                    },
+                                  ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
                     ],

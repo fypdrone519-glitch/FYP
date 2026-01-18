@@ -4,7 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/car_card.dart';
-import '../widgets/quick_chip.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreenContent extends StatefulWidget {
   const HomeScreenContent({super.key});
@@ -14,48 +14,78 @@ class HomeScreenContent extends StatefulWidget {
 }
 
 class _HomeScreenContentState extends State<HomeScreenContent> {
-  // Sample car data
-  final List<Car> _cars = [
-    Car(
-      id: '1',
-      make: 'Toyota',
-      model: 'Corolla',
-      imageUrl: '',
-      rating: 4.8,
-      trips: 120,
-      pricePerDay: 5000,
-      features: ['Automatic', 'AC', 'Bluetooth'],
-      badges: ['Instant', 'Verified'],
-      latitude: 24.8607,
-      longitude: 67.0011,
-    ),
-    Car(
-      id: '2',
-      make: 'Honda',
-      model: 'Civic',
-      imageUrl: '',
-      rating: 4.9,
-      trips: 85,
-      pricePerDay: 6000,
-      features: ['Automatic', 'AC', 'Navigation'],
-      badges: ['Delivery', 'Verified'],
-      latitude: 24.8607,
-      longitude: 67.0011,
-    ),
-    Car(
-      id: '3',
-      make: 'Suzuki',
-      model: 'Alto',
-      imageUrl: '',
-      rating: 4.6,
-      trips: 200,
-      pricePerDay: 3000,
-      features: ['Manual', 'AC'],
-      badges: ['Instant'],
-      latitude: 24.8607,
-      longitude: 67.0011,
-    ),
-  ];
+  List<Car> _cars = [];
+  bool _isLoading = true;
+  
+  // Firebase instance
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCars();
+  }
+
+  Future<void> _loadCars() async {
+    try {
+      final QuerySnapshot vehiclesSnapshot = await _firestore
+          .collection('vehicles')
+          .get();
+
+      final List<Car> cars = vehiclesSnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // Get features - take first 3
+        List<String> features = [];
+        if (data['features'] != null && data['features'] is List) {
+          features = List<String>.from(data['features']).take(3).toList();
+        }
+        
+        // Get location
+        double? latitude;
+        double? longitude;
+        if (data['location'] != null) {
+          final location = data['location'] as Map<String, dynamic>;
+          latitude = (location['latitude'] as num?)?.toDouble();
+          longitude = (location['longitude'] as num?)?.toDouble();
+        }
+        
+        // Get rent per day
+        double rentPerDay = 0.0;
+        if (data['rent_per_day'] != null) {
+          rentPerDay = (data['rent_per_day'] as num).toDouble();
+        }
+        
+        return Car(
+          id: doc.id,
+          make: data['make'] ?? '',
+          model: data['car_name'] ?? '', // car_name is used as model so fullName will be "make car_name"
+          imageUrl: '', // Leave empty as per user request
+          rating: 0.0, // Default value
+          trips: 0, // Default value
+          pricePerDay: rentPerDay,
+          features: features,
+          badges: [], // Default empty
+          latitude: latitude,
+          longitude: longitude,
+        );
+      }).toList();
+
+      setState(() {
+        _cars = cars;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading cars: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -353,21 +383,29 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
 
                       // Scrollable Car Cards List
                       Expanded(
-                        child: ListView.builder(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                          ),
-                          itemCount: _cars.length,
-                          itemBuilder: (context, index) {
-                            return CarCard(
-                              car: _cars[index],
-                              onTap: () {
-                                // Navigate to car details
-                              },
-                            );
-                          },
-                        ),
+                        child: _isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(),
+                              )
+                            : _cars.isEmpty
+                                ? const Center(
+                                    child: Text('No vehicles found'),
+                                  )
+                                : ListView.builder(
+                                    controller: scrollController,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.sm,
+                                    ),
+                                    itemCount: _cars.length,
+                                    itemBuilder: (context, index) {
+                                      return CarCard(
+                                        car: _cars[index],
+                                        onTap: () {
+                                          // Navigate to car details
+                                        },
+                                      );
+                                    },
+                                  ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
                     ],
