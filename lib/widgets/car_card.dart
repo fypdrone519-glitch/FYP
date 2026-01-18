@@ -41,7 +41,7 @@ class CarCard extends StatelessWidget {
                   Container(
                     height: 200,
                     width: double.infinity,
-                    color: AppColors.border,
+                    color: AppColors.hostBackground,
                     child:
                         car.imageUrl.isNotEmpty
                             ? Image.network(
@@ -124,8 +124,9 @@ class CarCard extends StatelessWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.foreground,
+                              color: AppColors.accent.withAlpha(10),
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color:AppColors.accent.withAlpha(50))
                             ),
                             child: Text(
                               feature,

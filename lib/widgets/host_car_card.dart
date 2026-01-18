@@ -1,18 +1,221 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/car.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_spacing.dart';
+import 'package:table_calendar/table_calendar.dart';
 
-class HostCarCard extends StatelessWidget {
+class HostCarCard extends StatefulWidget {
   final Car car;
   final VoidCallback? onTap;
 
   const HostCarCard({super.key, required this.car, this.onTap});
+
+  @override
+  State<HostCarCard> createState() => _HostCarCardState();
+}
+
+class _HostCarCardState extends State<HostCarCard> {
+  //for the calendar
+  Set<DateTime> _selectedDates = {};
+  DateTime _focusedDay = DateTime.now();
+
+
+
+     // Method to show calendar dialog
+    Future<void> _showAvailabilityCalendar(BuildContext context) async {
+    DateTime focusedDay = DateTime.now(); // Local variable instead of state
+    final DateTime firstDay = DateTime.now();
+    final DateTime lastDay = DateTime.now().add(const Duration(days: 365));
+    
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            contentPadding: const EdgeInsets.all(16),
+            content: SizedBox(
+              width: 350,
+              height: 450,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Calendar Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left),
+                            onPressed: () {
+                              setState(() {
+                                final newMonth = DateTime(
+                                  focusedDay.year,
+                                  focusedDay.month - 1,
+                                );
+                                // Only update if within valid range
+                                if (newMonth.isAfter(firstDay) || 
+                                    isSameDay(newMonth, firstDay)) {
+                                  focusedDay = newMonth;
+                                }
+                              });
+                            },
+                          ),
+                          Text(
+                            '${_getMonthName(focusedDay.month)} ${focusedDay.year}',
+                            style: AppTextStyles.h2(context),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right),
+                            onPressed: () {
+                              setState(() {
+                                final newMonth = DateTime(
+                                  focusedDay.year,
+                                  focusedDay.month + 1,
+                                );
+                                // Only update if within valid range
+                                if (newMonth.isBefore(lastDay)) {
+                                  focusedDay = newMonth;
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Calendar
+                    TableCalendar(
+                      firstDay: firstDay,
+                      lastDay: lastDay,
+                      focusedDay: focusedDay,
+                      calendarFormat: CalendarFormat.month,
+                      selectedDayPredicate: (day) {
+                        return _selectedDates.any((selectedDay) =>
+                            isSameDay(selectedDay, day));
+                      },
+                      onDaySelected: (selectedDay, newFocusedDay) {
+                        setState(() {
+                          if (_selectedDates.any((d) => isSameDay(d, selectedDay))) {
+                            _selectedDates.removeWhere((d) => isSameDay(d, selectedDay));
+                          } else {
+                            _selectedDates.add(selectedDay);
+                          }
+                          focusedDay = newFocusedDay;
+                        });
+                      },
+                      onPageChanged: (newFocusedDay) {
+                        setState(() {
+                          focusedDay = newFocusedDay;
+                        });
+                      },
+                      calendarStyle: CalendarStyle(
+                        todayDecoration: BoxDecoration(
+                          color: AppColors.accent.withOpacity(0.3),
+                          shape: BoxShape.circle,
+                        ),
+                        selectedDecoration: BoxDecoration(
+                          color: AppColors.accent,
+                          shape: BoxShape.circle,
+                        ),
+                        selectedTextStyle: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        todayTextStyle: TextStyle(
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        defaultTextStyle: AppTextStyles.body(context),
+                        weekendTextStyle: AppTextStyles.body(context),
+                        outsideDaysVisible: false,
+                      ),
+                      headerVisible: false,
+                      daysOfWeekStyle: DaysOfWeekStyle(
+                        weekdayStyle: AppTextStyles.meta(context).copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        weekendStyle: AppTextStyles.meta(context).copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      availableGestures: AvailableGestures.none, // Disable swipe gestures
+                    ),
+                    const SizedBox(height: 16),
+                    // Confirm Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _saveAvailabilityDates(_selectedDates, context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Confirm',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Helper method to get month name
+  String _getMonthName(int month) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[month - 1];
+  }
+
+  // Method to save availability dates to database
+  Future<void> _saveAvailabilityDates(Set<DateTime> dates, BuildContext context) async {
+    try {
+      // Convert DateTime to timestamp strings for Firestore
+      List<String> dateStrings = dates
+          .map((date) => date.toIso8601String().split('T')[0])
+          .toList();
+      
+      // Save to Firestore
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Availability dates updated!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
         decoration: BoxDecoration(
@@ -40,11 +243,11 @@ class HostCarCard extends StatelessWidget {
                   Container(
                     height: 200,
                     width: double.infinity,
-                    color: AppColors.border,
+                    color: AppColors.hostBackground,
                     child:
-                        car.imageUrl.isNotEmpty
+                        widget.car.imageUrl.isNotEmpty
                             ? Image.network(
-                              car.imageUrl,
+                              widget.car.imageUrl,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 return const Center(
@@ -71,7 +274,7 @@ class HostCarCard extends StatelessWidget {
                     child: Wrap(
                       spacing: AppSpacing.xs,
                       children:
-                          car.badges.map((badge) {
+                          widget.car.badges.map((badge) {
                             Color badgeColor = AppColors.accent;
                             if (badge == 'Verified') {
                               badgeColor = Colors.blue;
@@ -108,23 +311,37 @@ class HostCarCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Model Name
-                  Text(car.fullName, style: AppTextStyles.carModel(context)),
+                  // Model Name and calander button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(widget.car.fullName, style: AppTextStyles.carModel(context)),
+                      
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: IconButton(
+                          icon: const Icon(Icons.calendar_month, color: AppColors.background),
+                          onPressed: () => _showAvailabilityCalendar(context),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: AppSpacing.xs),
                   // Features
                   Wrap(
                     spacing: AppSpacing.xs,
                     runSpacing: AppSpacing.xs,
                     children:
-                        car.features.take(3).map((feature) {
+                        widget.car.features.take(3).map((feature) {
                           return Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.xs,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.foreground,
+                              color: AppColors.accent.withAlpha(10),
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.accent.withAlpha(50)),
                             ),
                             child: Text(
                               feature,
@@ -144,12 +361,12 @@ class HostCarCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        car.rating.toStringAsFixed(1),
+                        widget.car.rating.toStringAsFixed(1),
                         style: AppTextStyles.meta(context),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Text(
-                        '(${car.trips} trips)',
+                        '(${widget.car.trips} trips)',
                         style: AppTextStyles.meta(context),
                       ),
                     ],
@@ -163,13 +380,13 @@ class HostCarCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Rs ${car.pricePerDay.toStringAsFixed(0)}/day',
+                            'Rs ${widget.car.pricePerDay.toStringAsFixed(0)}/day',
                             style: AppTextStyles.price(context),
                           ),
                         ],
                       ),
                       ElevatedButton(
-                        onPressed: onTap,
+                        onPressed: widget.onTap,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accent,
                           foregroundColor: AppColors.white,

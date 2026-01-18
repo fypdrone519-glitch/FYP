@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/car.dart';
+import '../models/car_filter_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/car_card.dart';
+import '../widgets/car_filter_bottom_sheet.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreenContent extends StatefulWidget {
@@ -15,7 +17,9 @@ class HomeScreenContent extends StatefulWidget {
 
 class _HomeScreenContentState extends State<HomeScreenContent> {
   List<Car> _cars = [];
+  List<Car> _allCars = []; // Store all cars for filtering
   bool _isLoading = true;
+  CarFilterModel _filters = CarFilterModel();
   
   // Firebase instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -56,6 +60,11 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
           rentPerDay = (data['rent_per_day'] as num).toDouble();
         }
         
+        // Get additional filter fields
+        final drivingOptions = data['driving_options'] as String?;
+        final transmissionType = data['transmissionType'] as String?;
+        final fuelType = data['fuel_type'] as String?;
+        
         return Car(
           id: doc.id,
           make: data['make'] ?? '',
@@ -68,11 +77,15 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
           badges: [], // Default empty
           latitude: latitude,
           longitude: longitude,
+          drivingOptions: drivingOptions,
+          transmissionType: transmissionType,
+          fuelType: fuelType,
         );
       }).toList();
 
       setState(() {
-        _cars = cars;
+        _allCars = cars;
+        _cars = _applyFilters(cars, _filters);
         _isLoading = false;
       });
     } catch (e) {
@@ -84,6 +97,98 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
           SnackBar(content: Text('Error loading cars: $e')),
         );
       }
+    }
+  }
+
+  List<Car> _applyFilters(List<Car> cars, CarFilterModel filters) {
+    List<Car> filtered = cars;
+
+    // Filter by price range
+    filtered = filtered.where((car) {
+      return car.pricePerDay >= filters.minPrice && 
+             car.pricePerDay <= filters.maxPrice;
+    }).toList();
+
+    // Filter by brand
+    if (filters.selectedBrands.isNotEmpty) {
+      filtered = filtered.where((car) {
+        return filters.selectedBrands.contains(car.make);
+      }).toList();
+    }
+
+    // Filter by location (text search - would need additional location text field)
+    // For now, we'll skip location filtering as it requires location text data
+    // TODO: Add location text field to database/model if needed
+
+    // Filter by drive type
+    if (filters.driveTypes.isNotEmpty) {
+      filtered = filtered.where((car) {
+        if (car.drivingOptions == null) return false;
+        
+        // Check if car's driving_options matches any selected filter
+        if (filters.driveTypes.contains('Self Driving') && 
+            filters.driveTypes.contains('With Driver')) {
+          // User selected both, accept any car with either
+          return car.drivingOptions == 'Self Driving' || 
+                 car.drivingOptions == 'With Driver' || 
+                 car.drivingOptions == 'Both';
+        } else if (filters.driveTypes.contains('Self Driving')) {
+          return car.drivingOptions == 'Self Driving' || 
+                 car.drivingOptions == 'Both';
+        } else if (filters.driveTypes.contains('With Driver')) {
+          return car.drivingOptions == 'With Driver' || 
+                 car.drivingOptions == 'Both';
+        }
+        return false;
+      }).toList();
+    }
+
+    // Filter by transmission
+    if (filters.transmission != null) {
+      filtered = filtered.where((car) {
+        return car.transmissionType == filters.transmission;
+      }).toList();
+    }
+
+    // Filter by fuel type
+    if (filters.fuelTypes.isNotEmpty) {
+      filtered = filtered.where((car) {
+        if (car.fuelType == null) return false;
+        return filters.fuelTypes.contains(car.fuelType);
+      }).toList();
+    }
+
+    // Filter by delivery options
+    // Note: Delivery options would need to be stored in the database
+    // For now, we check badges for 'Delivery' badge if user selects 'Delivers to Me'
+    if (filters.deliveryOptions.isNotEmpty) {
+      filtered = filtered.where((car) {
+        if (filters.deliveryOptions.contains('Delivers to Me')) {
+          return car.badges.contains('Delivery');
+        }
+        // If user selects 'Pickup', we don't filter (all cars can be picked up)
+        return true;
+      }).toList();
+    }
+
+    return filtered;
+  }
+
+  Future<void> _showFilterBottomSheet() async {
+    final result = await showModalBottomSheet<CarFilterModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => CarFilterBottomSheet(
+        initialFilters: _filters,
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _filters = result;
+        _cars = _applyFilters(_allCars, _filters);
+      });
     }
   }
 
@@ -186,14 +291,29 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                                 padding: const EdgeInsets.only(
                                   right: AppSpacing.xs,
                                 ),
-                                child: IconButton(
-                                  icon: const Icon(
-                                    Icons.tune,
-                                    color: AppColors.secondaryText,
-                                  ),
-                                  onPressed: () {
-                                    // Show filter dialog
-                                  },
+                                child: Stack(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.tune,
+                                        color: AppColors.secondaryText,
+                                      ),
+                                      onPressed: _showFilterBottomSheet,
+                                    ),
+                                    if (_filters.hasActiveFilters)
+                                      Positioned(
+                                        right: 8,
+                                        top: 8,
+                                        child: Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(
+                                            color: AppColors.accent,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ],
