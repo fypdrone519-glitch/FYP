@@ -37,6 +37,7 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
   ];
   
   List<Car> _cars = [];
+  final List<Map<String, dynamic>> _vehicleDataList = [];
   bool _isLoading = true;
   
   // Firebase instances
@@ -65,9 +66,15 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
           .collection('vehicles')
           .where('owner_id', isEqualTo: currentUser.uid)
           .get();
+        _vehicleDataList.clear();
 
       final List<Car> cars = vehiclesSnapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
+
+       _vehicleDataList.add({
+        'id': doc.id,
+        ...data, // Store complete data
+      });
         
         // Get features - take first 3
         List<String> features = [];
@@ -89,12 +96,19 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
         if (data['rent_per_day'] != null) {
           rentPerDay = (data['rent_per_day'] as num).toDouble();
         }
+
+         // Get first image URL
+        String imageUrl = '';
+        if (data['images'] != null && data['images'] is List && data['images'].isNotEmpty) {
+          imageUrl = data['images'][0] as String;
+        }
+
         
         return Car(
           id: doc.id,
           make: data['make'] ?? '',
           model: data['car_name'] ?? '', // car_name is used as model so fullName will be "make car_name"
-          imageUrl: '', // Leave empty as per user request
+          imageUrl: imageUrl, // Use the first image URL
           rating: 0.0, // Default value
           trips: 0, // Default value
           pricePerDay: rentPerDay,
@@ -265,8 +279,33 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
                                     itemBuilder: (context, index) {
                                       return HostCarCard(
                                         car: _cars[index],
+                                        vehicleData: _vehicleDataList[index],
+                                        onDataUpdated: (updatedData) {
+                                          setState(() {
+                                            updatedData['id'] = _cars[index].id;
+                                            _vehicleDataList[index] = updatedData;
+                                            _cars[index] = Car(
+                                            id: updatedData['id'],
+                                            make: updatedData['make'] ?? '',
+                                            model: updatedData['car_name'] ?? '',
+                                            imageUrl: updatedData['images'] != null && (updatedData['images'] as List).isNotEmpty
+                                                ? updatedData['images'][0] as String
+                                                : '', // set first image
+                                            rating: 0.0,
+                                            trips: 0,
+                                            pricePerDay: (updatedData['rent_per_day'] as num?)?.toDouble() ?? 0.0,
+                                            features: updatedData['features'] != null 
+                                                ? List<String>.from(updatedData['features']).take(3).toList()
+                                                : [],
+                                            badges: [],
+                                            latitude: updatedData['location']?['latitude'],
+                                            longitude: updatedData['location']?['longitude'],
+                                          );
+
+                                          });
+                                        },
                                         onTap: () {
-                                          // Handle edit action
+                                          _loadCars();
                                         },
                                       );
                                     },

@@ -228,10 +228,6 @@ class _AddCarScreenState extends State<AddCarScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.hostBackground,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primaryText),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
         title: Text(
           'Add Car',
           style: AppTextStyles.h2(context),
@@ -789,69 +785,69 @@ class _AddCarScreenState extends State<AddCarScreen> {
   );
 }
 
-    Widget _buildTransmissionTypeSection(){
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: AppSpacing.lg),
-        _buildSectionTitle('Transmission Type'),
-        const SizedBox(height: AppSpacing.md),
-        _buildTransmission(Icons.directions_car, "Manual"),
-          const SizedBox(height: AppSpacing.sm),
-        _buildTransmission(Icons.person, "Automatic"),
-          const SizedBox(height: AppSpacing.sm),
-      ],
-    );
-  }
+  Widget _buildTransmissionTypeSection(){
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SizedBox(height: AppSpacing.lg),
+      _buildSectionTitle('Transmission Type'),
+      const SizedBox(height: AppSpacing.md),
+      _buildTransmission(Icons.directions_car, "Manual"),
+        const SizedBox(height: AppSpacing.sm),
+      _buildTransmission(Icons.person, "Automatic"),
+        const SizedBox(height: AppSpacing.sm),
+    ],
+  );
+}
 
-   Widget _buildTransmission(IconData icon, String title) {
-    final isSelected = _transmissionType == title; // Check if this option is selected
-    
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (isSelected) {
-            _transmissionType = null; // Deselect if already selected
-          } else {
-            _transmissionType = title; // Set as the only selected option
-          }
-        });
-      },
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.accent.withOpacity(0.2) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: isSelected ? AppColors.accent : AppColors.secondaryText,
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              title,
-              style: AppTextStyles.body(context).copyWith(
-                color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
+  Widget _buildTransmission(IconData icon, String title) {
+  final isSelected = _transmissionType == title; // Check if this option is selected
+  
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        if (isSelected) {
+          _transmissionType = null; // Deselect if already selected
+        } else {
+          _transmissionType = title; // Set as the only selected option
+        }
+      });
+    },
+    child: Container(
+      width: MediaQuery.of(context).size.width * 0.9,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: isSelected ? AppColors.accent.withOpacity(0.2) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
+          width: 1.5,
         ),
       ),
-    );
-  }
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: isSelected ? AppColors.accent : AppColors.secondaryText,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            title,
+            style: AppTextStyles.body(context).copyWith(
+              color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   Widget _buildFeaturesSection(){
     return Column(
@@ -1092,7 +1088,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
             child: Row(
               children: [
                 Text(
-                  'Trams & continue',
+                  'Ts & continue',
                   style: AppTextStyles.body(context),
                 ),
                 const SizedBox(width: AppSpacing.xs),
@@ -1140,7 +1136,6 @@ class _AddCarScreenState extends State<AddCarScreen> {
   }
 
   Future<void> _handleSubmit() async {
-    
     // Validate form fields
     if (_fullNameController.text.isEmpty ||
         _emailController.text.isEmpty ||
@@ -1194,16 +1189,16 @@ class _AddCarScreenState extends State<AddCarScreen> {
     }
 
     // Validate images
-    // if (_selectedImages.isEmpty) {
-    //   ScaffoldMessenger.of(context).showSnackBar(
-    //     const SnackBar(
-    //       content: Text('Please upload at least one car image'),
-    //       duration: Duration(seconds: 2),
-    //       backgroundColor: Colors.red,
-    //     ),
-    //   );
-    //   return;
-    // }
+    if (_selectedImages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please upload at least one car image'),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     // Get current user
     final User? currentUser = _auth.currentUser;
@@ -1224,13 +1219,18 @@ class _AddCarScreenState extends State<AddCarScreen> {
 
     try {
       // Upload images to Firebase Storage
-      //List<String> imageUrls = await _uploadImages(currentUser.uid);
+      
+      List<String> imageUrls = await _uploadImages(currentUser.uid);
+      print(imageUrls);
 
       // Create vehicle document in Firestore
       final vehicleRef = await _saveVehicleData(
-        currentUser.uid
-        //imageUrls,
+        currentUser.uid,
+        imageUrls,
       );
+      final user = FirebaseAuth.instance.currentUser;
+      print("AUTH UID: ${user?.uid}");
+      print("PASSED userId: ${currentUser.uid}");
 
 
       // Create damage_pool document (one-to-one with vehicle)
@@ -1255,9 +1255,6 @@ class _AddCarScreenState extends State<AddCarScreen> {
           MaterialPageRoute(builder: (_) => HostNavigation()),
           (route) => false,
         );
-        // Future.delayed(const Duration(seconds: 2), () {
-        //   if (mounted) Navigator.pop(context);
-        // });
 
       }
     } catch (e) {
@@ -1287,23 +1284,28 @@ class _AddCarScreenState extends State<AddCarScreen> {
       final imageFile = _selectedImages[i];
       final fileName = 'vehicle_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
       final storageRef = _storage.ref().child('vehicles/$userId/$fileName');
+      // print("Uploading image ${i + 1}/${_selectedImages.length}");
+      // print(imageFile);
+      // print(fileName);
+      // print(storageRef.fullPath);
       
       try {
         await storageRef.putFile(imageFile);
         final downloadUrl = await storageRef.getDownloadURL();
         imageUrls.add(downloadUrl);
+        print(downloadUrl);
       } catch (e) {
         throw Exception('Failed to upload image ${i + 1}: $e');
       }
     }
+    //print("images uploaded: $imageUrls");
     
     return imageUrls;
   }
 
   /// Save vehicle data to Firestore
   Future<DocumentReference> _saveVehicleData(
-    String ownerId,
-    //List<String> imageUrls,
+    String ownerId, List<String> imageUrls,
   ) async {
     // Determine driving_options based on user selection
     String drivingOptions;
@@ -1329,7 +1331,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
       'make': _selectedBrand ?? '',
       'model': '', // Add model field later if needed
       'year': DateTime.now().year, // Default to current year, can be added to form later
-      //'images': imageUrls,
+      'images': imageUrls,
       'features': _selectedFeatures.toList(),
       'registration_number': _carRegistrationController.text.trim(),
       'market_value': 0, // Add market_value field to form later

@@ -1,3 +1,4 @@
+import 'package:car_listing_app/screens/host/edit_car_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/car.dart';
@@ -7,22 +8,46 @@ import '../theme/app_spacing.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class HostCarCard extends StatefulWidget {
+  final Function(Map<String, dynamic>)? onDataUpdated;
   final Car car;
   final VoidCallback? onTap;
+  final Map<String, dynamic> vehicleData; 
+  final VoidCallback? onEdit;
 
-  const HostCarCard({super.key, required this.car, this.onTap});
+  const HostCarCard({super.key, required this.car, this.onTap,required this.vehicleData,this.onEdit,this.onDataUpdated});
 
   @override
   State<HostCarCard> createState() => _HostCarCardState();
 }
 
 class _HostCarCardState extends State<HostCarCard> {
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailabilityDates();
+  }
   //for the calendar
   Set<DateTime> _selectedDates = {};
   DateTime _focusedDay = DateTime.now();
-
-
-
+  Future<void> _loadAvailabilityDates() async {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('vehicles')
+            .doc(widget.car.id)
+            .get();
+        
+        if (doc.exists && doc.data()?['availability'] != null) {
+          final List<dynamic> dates = doc.data()!['availability'];
+          setState(() {
+            _selectedDates = dates
+                .map((dateStr) => DateTime.parse(dateStr))
+                .toSet();
+          });
+        }
+      } catch (e) {
+        print('Error loading dates: $e');
+      }
+    }
      // Method to show calendar dialog
     Future<void> _showAvailabilityCalendar(BuildContext context) async {
     DateTime focusedDay = DateTime.now(); // Local variable instead of state
@@ -196,27 +221,123 @@ class _HostCarCardState extends State<HostCarCard> {
   // Method to save availability dates to database
   Future<void> _saveAvailabilityDates(Set<DateTime> dates, BuildContext context) async {
     try {
-      // Convert DateTime to timestamp strings for Firestore
       List<String> dateStrings = dates
           .map((date) => date.toIso8601String().split('T')[0])
           .toList();
       
       // Save to Firestore
+      await FirebaseFirestore.instance
+          .collection('vehicles')
+          .doc(widget.car.id)
+          .update({'availability': dateStrings});
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Availability dates updated!')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Availability dates updated!')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
+    return Dismissible(
+        key: Key(widget.car.id),
+        direction: DismissDirection.endToStart,
+        confirmDismiss: (direction) async {
+          return await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              contentPadding: const EdgeInsets.all(24),
+              title: Center(
+                child: Text(
+                  'Confirm Delete',
+                  style: AppTextStyles.h2(context),
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Are you sure you want to delete this vehicle?',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.body(context).copyWith(
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: AppColors.secondaryText,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+        onDismissed: (direction) async {
+          await FirebaseFirestore.instance
+              .collection('vehicles')
+              .doc(widget.car.id)
+              .delete();
+          
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Vehicle deleted')),
+            );
+          }
+        },
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          decoration: BoxDecoration(
+            color: Colors.red,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+          ),
+          child: const Icon(Icons.delete, color: Colors.white, size: 32),
+        ),
+        child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
         decoration: BoxDecoration(
           color: AppColors.cardSurface,
@@ -386,7 +507,28 @@ class _HostCarCardState extends State<HostCarCard> {
                         ],
                       ),
                       ElevatedButton(
-                        onPressed: widget.onTap,
+                        onPressed: () async {
+                            final result = await showModalBottomSheet<bool>(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => EditCarScreen(
+                                vehicleId: widget.car.id, 
+                                vehicleData: widget.vehicleData 
+                              ),
+                            );
+                            
+                            if (result == true && mounted) {
+                              final doc = await FirebaseFirestore.instance
+                                  .collection('vehicles')
+                                  .doc(widget.car.id)
+                                  .get();
+                              
+                              if (doc.exists && widget.onDataUpdated != null) {
+                                widget.onDataUpdated!(doc.data()!);
+                              }
+                            }
+                          },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accent,
                           foregroundColor: AppColors.white,
@@ -415,6 +557,7 @@ class _HostCarCardState extends State<HostCarCard> {
           ],
         ),
       ),
+      )
     );
   }
 }

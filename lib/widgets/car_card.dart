@@ -42,28 +42,35 @@ class CarCard extends StatelessWidget {
                     height: 200,
                     width: double.infinity,
                     color: AppColors.hostBackground,
-                    child:
-                        car.imageUrl.isNotEmpty
-                            ? Image.network(
-                              car.imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Center(
-                                  child: Icon(
-                                    Icons.car_rental,
-                                    size: 60,
-                                    color: AppColors.secondaryText,
-                                  ),
-                                );
-                              },
-                            )
-                            : const Center(
-                              child: Icon(
-                                Icons.car_rental,
-                                size: 60,
-                                color: AppColors.secondaryText,
-                              ),
+                    child: car.imageUrl.isNotEmpty
+                        ? Image.network(
+                            car.imageUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.accent,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(
+                                child: Icon(
+                                  Icons.car_rental,
+                                  size: 60,
+                                  color: AppColors.secondaryText,
+                                ),
+                              );
+                            },
+                          )
+                        : const Center(
+                            child: Icon(
+                              Icons.car_rental,
+                              size: 60,
+                              color: AppColors.secondaryText,
                             ),
+                          ),
                   ),
                   // Badges
                   Positioned(

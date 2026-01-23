@@ -60,6 +60,12 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
           rentPerDay = (data['rent_per_day'] as num).toDouble();
         }
         
+        // Get first image URL
+        String imageUrl = '';
+        if (data['images'] != null && data['images'] is List && data['images'].isNotEmpty) {
+          imageUrl = data['images'][0] as String;
+        }
+        
         // Get additional filter fields
         final drivingOptions = data['driving_options'] as String?;
         final transmissionType = data['transmissionType'] as String?;
@@ -69,7 +75,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
           id: doc.id,
           make: data['make'] ?? '',
           model: data['car_name'] ?? '', // car_name is used as model so fullName will be "make car_name"
-          imageUrl: '', // Leave empty as per user request
+          imageUrl: imageUrl, // Use the first image URL
           rating: 0.0, // Default value
           trips: 0, // Default value
           pricePerDay: rentPerDay,
