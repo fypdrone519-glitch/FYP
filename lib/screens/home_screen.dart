@@ -527,7 +527,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                                       return CarCard(
                                         car: _cars[index],
                                         onTap: () {
-                                          // Navigate to car details
+                                          
                                         },
                                       );
                                     },

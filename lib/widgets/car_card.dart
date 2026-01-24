@@ -1,3 +1,4 @@
+import 'package:car_listing_app/screens/car_details.dart';
 import 'package:flutter/material.dart';
 import '../models/car.dart';
 import '../theme/app_colors.dart';
@@ -178,7 +179,17 @@ class CarCard extends StatelessWidget {
                         ],
                       ),
                       ElevatedButton(
-                        onPressed: onTap,
+                        onPressed: () async{
+                          final result = await showModalBottomSheet<bool>(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => CarDetails(
+                                vehicleId: car.id, 
+                                //vehicleData: widget.vehicleData 
+                              ),
+                            );
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accent,
                           foregroundColor: AppColors.white,

@@ -10,6 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
+import 'package:geocoding/geocoding.dart';
 
 class AddCarScreen extends StatefulWidget {
   const AddCarScreen({super.key});
@@ -46,6 +47,8 @@ class _AddCarScreenState extends State<AddCarScreen> {
   bool _isLoadingLocation = false;
   Set<Marker> _markers = {};
   bool _isInteractingWithMap = false; //to aviod scrolling when interacting with the map
+  // Street Address variable
+  String? _streetAddress;
 
   //image selection variable
   List<File> _selectedImages = [];
@@ -70,6 +73,16 @@ class _AddCarScreenState extends State<AddCarScreen> {
     {'name': 'Blue', 'color': Colors.blue},
     {'name': 'Black', 'color': Colors.black},
   ];
+  // Method to get address from latitude and longitude
+  Future<String> getAddressFromLatLng(double lat, double lng) async {
+    print("Getting address for Lat: $lat, Lng: $lng");
+  List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
+
+  Placemark place = placemarks[0];
+  print("Obtained address: ${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}");
+
+  return "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
+}
   
   // Method to get current location
   Future<void> _getCurrentLocation() async {
@@ -121,6 +134,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+      _streetAddress = await getAddressFromLatLng(position.latitude, position.longitude);
 
       setState(() {
         carLocation = LatLng(position.latitude, position.longitude);
@@ -1353,6 +1367,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
       'car_name': _fullNameController.text.trim(),
       'owner_email': _emailController.text.trim(),
       'owner_contact': _contactController.text.trim(),
+      'street_address': _streetAddress ?? '',
     };
 
     final vehicleRef = await _firestore.collection('vehicles').add(vehicleData);
