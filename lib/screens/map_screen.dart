@@ -5,6 +5,8 @@ import '../widgets/cars_map.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MapsScreen extends StatefulWidget {
   const MapsScreen({super.key});
@@ -17,34 +19,103 @@ class _MapsScreenState extends State<MapsScreen> {
   GoogleMapController? _mapController;
   final CarouselSliderController _carouselController = CarouselSliderController();
   int _currentIndex = 0;
-  final List<Car> _cars = [
-    Car(
-      id: '1',
-      make: 'Toyota',
-      model: 'Corolla',
-      imageUrl: '',
-      rating: 4.8,
-      trips: 120,
-      pricePerDay: 5000,
-      features: ['Automatic'],
-      badges: ['Instant'],
-      latitude: 24.8607,
-      longitude: 67.0011,
-    ),
-    Car(
-      id: '2',
-      make: 'Honda',
-      model: 'Civic',
-      imageUrl: '',
-      rating: 4.9,
-      trips: 80,
-      pricePerDay: 6000,
-      features: ['Automatic'],
-      badges: ['Verified'],
-      latitude: 24.865,
-      longitude: 67.01,
-    ),
-  ];
+    List<Car> _cars = [];
+  bool _isLoading = true;
+  @override
+  void initState() {
+    super.initState();
+    _loadCars();
+  }
+
+  Future<void> _loadCars() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Fetch all vehicles (or filter by owner if needed)
+      final QuerySnapshot vehiclesSnapshot = await _firestore
+          .collection('vehicles')
+          .get();
+
+      final List<Car> cars = vehiclesSnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // Get features - take first 3
+        List<String> features = [];
+        if (data['features'] != null && data['features'] is List) {
+          features = List<String>.from(data['features']).take(3).toList();
+        }
+        
+        // Get location
+        double? latitude;
+        double? longitude;
+        if (data['location'] != null) {
+          final location = data['location'] as Map<String, dynamic>;
+          latitude = (location['latitude'] as num?)?.toDouble();
+          longitude = (location['longitude'] as num?)?.toDouble();
+        }
+        
+        // Get rent per day
+        double rentPerDay = 0.0;
+        if (data['rent_per_day'] != null) {
+          rentPerDay = (data['rent_per_day'] as num).toDouble();
+        }
+        //Get rent per hour
+        double rentPerHour = 0.0;
+        if (data['rent_per_hour'] != null) {
+          rentPerHour = (data['rent_per_hour'] as num).toDouble();
+        }
+        
+        // Get images
+        String imageUrl = '';
+        if (data['images'] != null && data['images'] is List) {
+          final images = List<String>.from(data['images']);
+          if (images.isNotEmpty) {
+            imageUrl = images[0]; // Get first image
+          }
+        }
+        
+        return Car(
+          id: doc.id,
+          make: data['make'] ?? '',
+          model: data['car_name'] ?? '',
+          imageUrl: imageUrl,
+          rating: 4.5, // Default, or add rating field to your database
+          trips: 0, // Default, or add trips field to your database
+          pricePerDay: rentPerDay,
+          pricePerHour: rentPerHour,
+          features: features,
+          badges: [], // Default empty
+          latitude: latitude,
+          longitude: longitude,
+        );
+      }).toList();
+      
+      // Filter out cars without valid location
+      final validCars = cars.where((car) => 
+        car.latitude != null && car.longitude != null
+      ).toList();
+
+      setState(() {
+        _cars = validCars;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading cars: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading cars: $e')),
+        );
+      }
+    }
+  }
+  
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   void _onPinTapped(Car car) {
     // Find the index of the tapped car
@@ -52,6 +123,16 @@ class _MapsScreenState extends State<MapsScreen> {
     if (carIndex != -1) {
       // Animate the carousel to the selected car
       _carouselController.animateToPage(carIndex);
+      
+      // Animate map to car location
+      if (car.latitude != null && car.longitude != null) {
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(car.latitude!, car.longitude!),
+            15,
+          ),
+        );
+      }
     }
   }
 
@@ -165,6 +246,31 @@ class _MapsScreenState extends State<MapsScreen> {
 
   @override
   Widget build(BuildContext context) {
+     if (_isLoading) {
+    return Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(color: AppColors.accent),
+      ),
+    );
+  }
+
+  if (_cars.isEmpty) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.car_rental, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No cars available',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
     return Scaffold(
       body: Stack(
         children: [
@@ -370,6 +476,17 @@ class _MapsScreenState extends State<MapsScreen> {
                 setState(() {
                   _currentIndex = index;
                 });
+                
+                // Animate map to the selected car's location
+                final selectedCar = _cars[index];
+                if (selectedCar.latitude != null && selectedCar.longitude != null) {
+                  _mapController?.animateCamera(
+                    CameraUpdate.newLatLngZoom(
+                      LatLng(selectedCar.latitude!, selectedCar.longitude!),
+                      15, // Zoom level (adjust as needed: 10-20, higher = more zoomed in)
+                    ),
+                  );
+                }
               },
               height: MediaQuery.of(context).size.height,
               viewportFraction: 0.85, // How much of the card is visible

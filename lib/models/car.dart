@@ -10,6 +10,7 @@ class Car {
   final List<String> badges; // e.g., "Instant", "Delivery", "Verified"
   final double? latitude;
   final double? longitude;
+  final double pricePerHour;
   
   // Additional fields for filtering
   final String? drivingOptions; // 'Self Driving', 'With Driver', or 'Both'
@@ -30,7 +31,7 @@ class Car {
     this.longitude,
     this.drivingOptions,
     this.transmissionType,
-    this.fuelType,
+    this.fuelType, required this.pricePerHour,
   });
 
   String get fullName => '$make $model';

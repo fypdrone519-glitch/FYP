@@ -108,6 +108,29 @@ class CarCard extends StatelessWidget {
                           }).toList(),
                     ),
                   ),
+                  // Rent per day tag
+                  Positioned(
+                    top: AppSpacing.sm,
+                    right: AppSpacing.sm,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'PKR ${car.pricePerDay.toStringAsFixed(0)}/day',
+                        style: const TextStyle(
+                          color: AppColors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -173,14 +196,14 @@ class CarCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Rs ${car.pricePerDay.toStringAsFixed(0)}/day',
+                            'Rs ${car.pricePerHour.toStringAsFixed(0)}/hour',
                             style: AppTextStyles.price(context),
                           ),
                         ],
                       ),
                       ElevatedButton(
                         onPressed: () async{
-                          final result = await showModalBottomSheet<bool>(
+                          await showModalBottomSheet<bool>(
                               context: context,
                               isScrollControlled: true,
                               backgroundColor: Colors.transparent,

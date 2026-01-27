@@ -59,6 +59,11 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
         if (data['rent_per_day'] != null) {
           rentPerDay = (data['rent_per_day'] as num).toDouble();
         }
+        //Get rent per hour
+        double rentPerHour = 0.0;
+        if (data['rent_per_hour'] != null) {
+          rentPerHour = (data['rent_per_hour'] as num).toDouble();
+        }
         
         // Get first image URL
         String imageUrl = '';
@@ -79,6 +84,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
           rating: 0.0, // Default value
           trips: 0, // Default value
           pricePerDay: rentPerDay,
+          pricePerHour: rentPerHour,
           features: features,
           badges: [], // Default empty
           latitude: latitude,
@@ -115,6 +121,11 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
              car.pricePerDay <= filters.maxPrice;
     }).toList();
 
+    // Filter by price per hour range
+    // filtered = filtered.where((car) {
+    //   return car.pricePerHour >= filters.minPrice && 
+    //          car.pricePerHour <= filters.maxPrice;
+    // }).toList();
     // Filter by brand
     if (filters.selectedBrands.isNotEmpty) {
       filtered = filtered.where((car) {
@@ -139,11 +150,9 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                  car.drivingOptions == 'With Driver' || 
                  car.drivingOptions == 'Both';
         } else if (filters.driveTypes.contains('Self Driving')) {
-          return car.drivingOptions == 'Self Driving' || 
-                 car.drivingOptions == 'Both';
+          return car.drivingOptions == 'Self Driving'|| car.drivingOptions == 'Both';
         } else if (filters.driveTypes.contains('With Driver')) {
-          return car.drivingOptions == 'With Driver' || 
-                 car.drivingOptions == 'Both';
+          return car.drivingOptions == 'With Driver';
         }
         return false;
       }).toList();
@@ -277,6 +286,10 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                             children: [
                               Expanded(
                                 child: TextField(
+                                  style: const TextStyle(
+                                    color: AppColors.secondaryText,
+                                    fontSize: 16,      
+                                  ),
                                   decoration: InputDecoration(
                                     prefixIcon: const Icon(
                                       Icons.car_rental,

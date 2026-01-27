@@ -97,6 +97,12 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
           rentPerDay = (data['rent_per_day'] as num).toDouble();
         }
 
+        // Get rent per day
+        double rentPerhour = 0.0;
+        if (data['rent_per_hour'] != null) {
+          rentPerhour = (data['rent_per_hour'] as num).toDouble();
+        }
+
          // Get first image URL
         String imageUrl = '';
         if (data['images'] != null && data['images'] is List && data['images'].isNotEmpty) {
@@ -112,6 +118,7 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
           rating: 0.0, // Default value
           trips: 0, // Default value
           pricePerDay: rentPerDay,
+          pricePerHour: rentPerhour,
           features: features,
           badges: [], // Default empty
           latitude: latitude,
@@ -294,6 +301,7 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
                                             rating: 0.0,
                                             trips: 0,
                                             pricePerDay: (updatedData['rent_per_day'] as num?)?.toDouble() ?? 0.0,
+                                            pricePerHour: (updatedData['rent_per_hour'] as num?)?.toDouble() ?? 0.0,
                                             features: updatedData['features'] != null 
                                                 ? List<String>.from(updatedData['features']).take(3).toList()
                                                 : [],

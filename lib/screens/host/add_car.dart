@@ -28,6 +28,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
   final TextEditingController _carRegistrationController = TextEditingController();
   final TextEditingController _carAbilityController = TextEditingController();
   final TextEditingController _rentPerDayController = TextEditingController();
+  final TextEditingController _rentPerHourController = TextEditingController();
 
   // State variables
   String? _transmissionType;
@@ -270,6 +271,9 @@ class _AddCarScreenState extends State<AddCarScreen> {
             _buildTextField(_rentPerDayController, 'Renting Price per day'),
             const SizedBox(height: AppSpacing.md),
 
+            _buildTextField(_rentPerHourController, 'Renting Price per hour'),
+            const SizedBox(height: AppSpacing.md),
+
             // Car information section
             _buildSectionTitle('Car information'),
             const SizedBox(height: AppSpacing.sm),
@@ -334,7 +338,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
     TextInputType keyboardType = TextInputType.text; // Default
   
   if (hint.toLowerCase().contains('renting price per day') || 
-      hint.toLowerCase().contains('contact')) {
+      hint.toLowerCase().contains('contact') || hint.toLowerCase().contains('renting price per hour')) {
     keyboardType = TextInputType.number;
   }
     return Container(
@@ -1202,6 +1206,18 @@ class _AddCarScreenState extends State<AddCarScreen> {
       return;
     }
 
+    // Validate rent per hour
+    if (_rentPerHourController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter the rent per hour'),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     // Validate images
     if (_selectedImages.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1339,6 +1355,10 @@ class _AddCarScreenState extends State<AddCarScreen> {
     if (_rentPerDayController.text.trim().isNotEmpty) {
       rentPerDay = double.tryParse(_rentPerDayController.text.trim()) ?? 0.0;
     }
+    double rentPerHour = 0.0;
+    if (_rentPerHourController.text.trim().isNotEmpty) {
+      rentPerHour = double.tryParse(_rentPerHourController.text.trim()) ?? 0.0;
+    }
 
     final vehicleData = {
       'owner_id': ownerId,
@@ -1353,6 +1373,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
       'with_driver_only': false, // Add this option to form later
       'driving_options': drivingOptions, // Save driving options
       'rent_per_day': rentPerDay, // Save rent per day
+      'rent_per_hour': rentPerHour, // Save rent per hour
       'created_at': FieldValue.serverTimestamp(),
       'recorded_damages': [],
       'location': {

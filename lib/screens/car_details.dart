@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:car_listing_app/screens/car_booking_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
+import 'package:table_calendar/table_calendar.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class CarDetails extends StatefulWidget {
@@ -818,7 +820,7 @@ class _CarDetailsState extends State<CarDetails> {
                                       isAvailable
                                           ? Colors
                                               .transparent // Available = Normal background
-                                          : Colors.red.withOpacity(
+                                          : Colors.white.withOpacity(
                                             0.1,
                                           ), // Not available = Light red tint
                                   shape: BoxShape.circle,
@@ -831,8 +833,8 @@ class _CarDetailsState extends State<CarDetails> {
                                           isAvailable
                                               ? Colors
                                                   .black // Available = Dark/bold text
-                                              : Colors.red.withOpacity(
-                                                0.4,
+                                              : Colors.grey.withOpacity(
+                                                0.7,
                                               ), // Not available = Light red text
                                       fontWeight:
                                           isAvailable
@@ -880,6 +882,14 @@ class _CarDetailsState extends State<CarDetails> {
                           child: ElevatedButton(
                             onPressed: () {
                               Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (context) => BookingDetailsScreen(
+                                    vehicleData: _vehicleData!,
+                                  ), 
+                                ),
+                              );
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.accent,
@@ -889,7 +899,7 @@ class _CarDetailsState extends State<CarDetails> {
                               elevation: 0,
                             ),
                             child: const Text(
-                              'Close',
+                              'Proceed to Booking ->',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
