@@ -1,3 +1,6 @@
+import 'package:car_listing_app/services/kyc_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../theme/app_colors.dart';
@@ -6,10 +9,12 @@ import '../../theme/app_spacing.dart';
 
 class BookingDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> vehicleData;
+  final String vehicleId;
   
   const BookingDetailsScreen({
     super.key,
     required this.vehicleData,
+    required this.vehicleId,
   });
 
   @override
@@ -23,10 +28,22 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   String _selectedRentalPeriod = 'Day';
   DateTime? _pickupDate;
   DateTime? _returnDate;
-  
+  String? status='loading';
+
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _contactController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _getVerificationStatus();
+  }
+
+  Future<void> _getVerificationStatus() async {
+    status = await KycService().getVerificationStatus();
+    setState(() {});
+  }
 
   @override
   void dispose() {
@@ -39,6 +56,19 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   String get _drivingOptions => widget.vehicleData['driving_options'] ?? 'Self Driving';
   bool get _canToggleDriver => _drivingOptions == 'Both';
   bool get _onlyWithDriver => _drivingOptions == 'With Driver';
+  bool get isVerified => status?.trim().toLowerCase() == "verified";
+  bool get isLoading => status == "loading";
+
+  // Validation flags for required fields
+  bool _fullNameError = false;
+  bool _emailError = false;
+  bool _contactError = false;
+
+
+  // Future<void> _getstatus() async {
+  //   // Placeholder for future status fetching logic
+  //   final status=await _firestore.collection('owners').doc()
+  // }
   
   // Parse availability dates from vehicleData
   Set<DateTime> get _availableDates {
@@ -141,6 +171,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     controller: _fullNameController,
                     icon: Icons.person_outline,
                     hint: 'Full Name*',
+                    hasError: _fullNameError,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   
@@ -149,6 +180,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     controller: _emailController,
                     icon: Icons.email_outlined,
                     hint: 'Email Address*',
+                    hasError: _emailError,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   
@@ -158,6 +190,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     icon: Icons.phone_outlined,
                     hint: 'Contact*',
                     keyboardType: TextInputType.phone,
+                    hasError: _contactError,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   
@@ -168,7 +201,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                   const SizedBox(height: AppSpacing.md),
                   
                   // Rental Date & Time
-                  Text('Rental Date &Time', style: AppTextStyles.h2(context)),
+                  Text('Rental Date & Time', style: AppTextStyles.h2(context)),
                   const SizedBox(height: AppSpacing.sm),
                   _buildRentalPeriodSelection(),
                   const SizedBox(height: AppSpacing.sm),
@@ -335,12 +368,15 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     required IconData icon,
     required String hint,
     TextInputType? keyboardType,
+    bool hasError = false,
   }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(
+          color: hasError ? AppColors.error : Colors.grey[300]!,
+        ),
       ),
       child: TextField(
         controller: controller,
@@ -415,10 +451,6 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         _buildPeriodChip('Hour'),
         const SizedBox(width: AppSpacing.xs),
         _buildPeriodChip('Day'),
-        const SizedBox(width: AppSpacing.xs),
-        _buildPeriodChip('Weekly'),
-        const SizedBox(width: AppSpacing.xs),
-        _buildPeriodChip('Monthly'),
       ],
     );
   }
@@ -844,37 +876,144 @@ bool _isSameDate(DateTime? date1, DateTime? date2) {
     );
   }
 
-  Widget _buildPayButton() {
-    final rentPerDay = (widget.vehicleData['rent_per_day'] as num?)?.toDouble() ?? 0.0;
-    final String priceText;
-    
-    if (_pickupDate == null || _returnDate == null) {
-      // Show base price if dates not selected
-      priceText = 'PKR ${rentPerDay.toStringAsFixed(0)}  Pay Now';
-    } else {
-      // Show calculated total price
-      priceText = 'PKR ${_totalPrice.toStringAsFixed(0)}  Pay Now';
-    }
-    
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: () {
-          // Handle payment
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          elevation: 0,
-        ),
-        child: Text(
-          priceText,
-          style: AppTextStyles.button(context).copyWith(fontSize: 18),
-        ),
-      ),
-    );
+Widget _buildPayButton() {
+  // Refresh verification status
+  _getVerificationStatus();
+  final rentPerDay =
+      (widget.vehicleData['rent_per_day'] as num?)?.toDouble() ?? 0.0;
+  final String priceText;
+
+  if (!isVerified) {
+    priceText = "Verification not completed";
+  } else if (_pickupDate == null || _returnDate == null) {
+    priceText = 'PKR ${rentPerDay.toStringAsFixed(0)}  Pay Now';
+  } else {
+    priceText = 'PKR ${_totalPrice.toStringAsFixed(0)}  Pay Now';
   }
+
+  return SizedBox(
+    width: double.infinity,
+    height: 56,
+    child: ElevatedButton(
+      onPressed: (!isVerified || isLoading)
+          ? null
+          : () async {
+              // Validate required fields
+              setState(() {
+                _fullNameError = _fullNameController.text.trim().isEmpty;
+                _emailError = _emailController.text.trim().isEmpty;
+                _contactError = _contactController.text.trim().isEmpty;
+              });
+
+              final bool missingDates =
+                  _pickupDate == null || _returnDate == null;
+
+              if (_fullNameError ||
+                  _emailError ||
+                  _contactError ||
+                  missingDates) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Please fill out all required fields and select both dates.',
+                    ),
+                    duration: Duration(seconds: 2),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              // Ensure user is logged in
+              final user = FirebaseAuth.instance.currentUser;
+              if (user == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please log in to complete your booking.'),
+                    duration: Duration(seconds: 2),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              // Derive booking type
+              String bookingType;
+              if (_canToggleDriver) {
+                bookingType = _bookWithDriver ? 'With Driver' : 'Without Driver';
+              } else {
+                // No toggle – infer from driving options
+                if (_onlyWithDriver) {
+                  bookingType = 'With Driver';
+                } else {
+                  bookingType = 'Without Driver';
+                }
+              }
+
+              final String vehicleId = widget.vehicleId;
+              final String ownerId =
+                  (widget.vehicleData['owner_id'] as String?) ?? '';
+              final String renterId = user.uid;
+              final String renterEmail = _emailController.text.trim();
+
+              try {
+                await FirebaseFirestore.instance
+                    .collection('bookings')
+                    .add(<String, dynamic>{
+                  'vehicle_id': vehicleId,
+                  'owner_id': ownerId,
+                  'renter_id': renterId,
+                  'booking_type': bookingType,
+                  // Trip status (host must approve)
+                  'status': 'Waiting for the approval',
+                  'renter_full_name': _fullNameController.text.trim(),
+                  'renter_contact': _contactController.text.trim(),
+                  'renter_email': renterEmail,
+                  'gender': _selectedGender,
+                  'rental_period': _selectedRentalPeriod,
+                  'start_time': Timestamp.fromDate(_pickupDate!),
+                  'end_time': Timestamp.fromDate(_returnDate!),
+                  'amount_paid': _totalPrice,
+                  'rent_per_day': rentPerDay,
+                  'created_at': FieldValue.serverTimestamp(),
+                });
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Booking confirmed. Amount paid: PKR ${_totalPrice.toStringAsFixed(0)}',
+                      ),
+                      duration: const Duration(seconds: 3),
+                      backgroundColor: Colors.green.withOpacity(0.9),
+                    ),
+                  );
+                  Navigator.pop(context);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to save booking: $e'),
+                      duration: const Duration(seconds: 3),
+                      backgroundColor: Colors.red.withOpacity(0.9),
+                    ),
+                  );
+                }
+              }
+            },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isVerified ? AppColors.accent : Colors.grey.shade400,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+        elevation: 0,
+      ),
+      child: Text(
+        priceText,
+        style: AppTextStyles.button(context).copyWith(fontSize: 18),
+      ),
+    ),
+  );
+}
 }

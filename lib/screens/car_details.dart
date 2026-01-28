@@ -887,6 +887,7 @@ class _CarDetailsState extends State<CarDetails> {
                                 MaterialPageRoute<void>(
                                   builder: (context) => BookingDetailsScreen(
                                     vehicleData: _vehicleData!,
+                                    vehicleId: widget.vehicleId,
                                   ), 
                                 ),
                               );

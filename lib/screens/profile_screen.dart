@@ -1,10 +1,13 @@
 import 'package:car_listing_app/screens/auth/login_screen.dart';
 import 'package:car_listing_app/screens/host_navigation.dart';
+import 'package:car_listing_app/screens/kyc_intro_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,22 +17,46 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-    Future<void> _logout(BuildContext context) async {
-  try {
-    await FirebaseAuth.instance.signOut();
-    
-    // Navigate to login screen and remove all previous routes
-    if (mounted) {
-      Navigator.pushReplacement(context, 
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
+  String verificationStatus = "loading";
+  //method to fetch verification status
+  Future<void> loadVerificationStatus() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final doc =
+        await FirebaseFirestore.instance.collection('owners').doc(uid).get();
+
+    if (doc.exists) {
+      setState(() {
+        verificationStatus = doc.data()?['verification_status'] ?? "unverified";
+        print(verificationStatus);
+      });
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error logging out: $e')),
-    );
   }
-}
+
+  @override
+  void initState() {
+    super.initState();
+    loadVerificationStatus();
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    try {
+      await FirebaseAuth.instance.signOut();
+
+      // Navigate to login screen and remove all previous routes
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error logging out: $e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,79 +77,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         // Show logout confirmation dialog
                         showDialog(
                           context: context,
-                          builder: (context) => AlertDialog(
-                            backgroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            contentPadding: const EdgeInsets.all(24),
-                            title: Center(
-                              child: Text(
-                                'Confirm logout',
-                                style: AppTextStyles.h2(context).copyWith(
-                                  //fontWeight: FontWeight.w600,
+                          builder:
+                              (context) => AlertDialog(
+                                backgroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                contentPadding: const EdgeInsets.all(24),
+                                title: Center(
+                                  child: Text(
+                                    'Confirm logout',
+                                    style: AppTextStyles.h2(context).copyWith(
+                                      //fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Are you sure you want to log out?',
+                                      textAlign: TextAlign.center,
+                                      style: AppTextStyles.body(
+                                        context,
+                                      ).copyWith(
+                                        color: AppColors.secondaryText,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    // Log out button
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 48,
+                                      child: ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.pop(
+                                            context,
+                                          ); // Close dialog
+                                          _logout(context);
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              Colors.red, // Burgundy/wine color
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              24,
+                                            ),
+                                          ),
+                                          elevation: 0,
+                                        ),
+                                        child: const Text(
+                                          'Log out',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    // Cancel button
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: Text(
+                                        'Cancel',
+                                        style: TextStyle(
+                                          color: AppColors.secondaryText,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Are you sure you want to log out?',
-                                  textAlign: TextAlign.center,
-                                  style: AppTextStyles.body(context).copyWith(
-                                    color: AppColors.secondaryText,
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                // Log out button
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 48,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.pop(context); // Close dialog
-                                      _logout(context);
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red, // Burgundy/wine color
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(24),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                    child: const Text(
-                                      'Log out',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                // Cancel button
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: Text(
-                                    'Cancel',
-                                    style: TextStyle(
-                                      color: AppColors.secondaryText,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                         );
                       },
-                      icon: const Icon(
-                        Icons.logout,
-                        color: Colors.red,
-                      ),
+                      icon: const Icon(Icons.logout, color: Colors.red),
                     ),
                   ],
                 ),
@@ -143,41 +175,92 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: AppSpacing.sm),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Centered Name + Status
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Fawad Naveed',
+                        style: AppTextStyles.h1(context).copyWith(fontSize: 24),
+                      ),
+                      Text(
+                        verificationStatus == "verified"
+                            ? "Verified"
+                            : "Not Verified",
+                        style: TextStyle(
+                          color:
+                              verificationStatus == "verified"
+                                  ? Colors.blue
+                                  : Colors.orange,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
 
-              // Name
-              Text(
-                'Fawad Naveed',
-                style: AppTextStyles.h1(context).copyWith(fontSize: 24),
+                  // Right-side verification icon
+                
+                  Positioned(
+                    right: 0,
+                    left: MediaQuery.of(  context).size.width/2 - 45,
+                    child: IconButton(
+                      onPressed: () {
+                        if (verificationStatus != "verified") {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => const KycVerificationScreen(),
+                            ),
+                          );
+                        }
+                      },
+                      icon:
+                          verificationStatus == "verified"
+                              ? const Icon(
+                                Icons.verified,
+                                color: Colors.blue,
+                                size: 22,
+                              )
+                              : const Icon(
+                                Icons.warning,
+                                color: Colors.orange,
+                                size: 20,
+                              ),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: AppSpacing.xs),
 
               // Location
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.location_on,
-                    size: 16,
-                    color: AppColors.secondaryText,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Karachi',
-                    style: AppTextStyles.meta(context),
-                  ),
-                ],
-              ),
-              
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.center,
+              //   children: [
+              //     Icon(
+              //       Icons.location_on,
+              //       size: 16,
+              //       color: AppColors.secondaryText,
+              //     ),
+              //     const SizedBox(width: 4),
+              //     Text(
+              //       'Karachi',
+              //       style: AppTextStyles.meta(context),
+              //     ),
+              //   ],
+              // ),
               const SizedBox(height: AppSpacing.lg),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                     Padding(
+                    Padding(
                       padding: EdgeInsets.all(16.0),
                       child: Text(
                         'General',
@@ -194,11 +277,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: 'Become a Host',
                       onTap: () {
                         Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (context) => const HostNavigation(),
-                        ),
-                      );
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (context) => const HostNavigation(),
+                          ),
+                        );
                       },
                     ),
                     _buildSettingItem(
@@ -222,7 +305,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Text(
                           'Payment Method',
-                          style: AppTextStyles.h2(context).copyWith(fontSize: 18),
+                          style: AppTextStyles.h2(
+                            context,
+                          ).copyWith(fontSize: 18),
                         ),
                         TextButton(
                           onPressed: () {},
@@ -247,10 +332,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF2C3E50),
-                            Color(0xFF1A252F),
-                          ],
+                          colors: [Color(0xFF2C3E50), Color(0xFF1A252F)],
                         ),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
@@ -346,7 +428,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         const SizedBox(width: 8),
                                         Icon(
                                           Icons.copy,
-                                          color: Colors.white.withValues(alpha: 0.5),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.5,
+                                          ),
                                           size: 16,
                                         ),
                                       ],
@@ -459,25 +543,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+
 Widget _buildSettingItem({
   required IconData icon,
   required String title,
   required VoidCallback onTap,
 }) {
-  if(title == 'Darkmode') {
+  if (title == 'Darkmode') {
     return SwitchListTile(
       title: Text(
         title,
-        style: const TextStyle(
-          fontSize: 15,
-          color: Colors.black87,
-        ),
+        style: const TextStyle(fontSize: 15, color: Colors.black87),
       ),
-      secondary: Icon(
-        icon,
-        size: 24,
-        color: Colors.black54,
-      ),
+      secondary: Icon(icon, size: 24, color: Colors.black54),
       value: false, // Replace with actual value
       onChanged: (bool value) {
         // Handle dark mode toggle
@@ -489,35 +567,19 @@ Widget _buildSettingItem({
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
       decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFEEEEEE),
-            width: 1,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 24,
-            color: Colors.black54,
-          ),
+          Icon(icon, size: 24, color: Colors.black54),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontSize: 15, color: Colors.black87),
             ),
           ),
-          const Icon(
-            Icons.chevron_right,
-            size: 24,
-            color: Colors.black26,
-          ),
+          const Icon(Icons.chevron_right, size: 24, color: Colors.black26),
         ],
       ),
     ),

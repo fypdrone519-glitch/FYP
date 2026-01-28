@@ -75,6 +75,7 @@ flutter:
   assets:
     - lib/assets/slider_icon.png
     - lib/assets/welcome_screen_image.png
+    - lib/assets/kyc.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

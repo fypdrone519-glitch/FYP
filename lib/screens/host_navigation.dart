@@ -1,6 +1,7 @@
 import 'package:car_listing_app/screens/host/host_home_screen.dart';
 import 'package:car_listing_app/screens/host/add_car.dart';
 import 'package:car_listing_app/screens/host/host_profile_screen.dart';
+import 'package:car_listing_app/screens/trips_screen.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -17,7 +18,7 @@ class _HostNavigationState extends State<HostNavigation> {
 
   final List<Widget> _screens = [
     const HostHomeScreen(),
-    const InsightsScreen(),
+    TripsScreen(viewAsHost: true),
     const AddCarScreen(),
     const InboxScreen(),
     const HostProfileScreen(),
@@ -25,10 +26,10 @@ class _HostNavigationState extends State<HostNavigation> {
 
   final List<NavigationItem> _navigationItems = [
     NavigationItem(Icons.home_outlined, Icons.home, 'Home'),
-    NavigationItem(Icons.insert_chart_outlined_outlined, Icons.insert_chart_outlined, 'Insights'),
+    NavigationItem(Icons.directions_car_outlined,Icons.directions_car, 'Trips'),
     NavigationItem(Icons.add_box_outlined, Icons.add_box_rounded, 'Add Car'),
     NavigationItem(Icons.inbox_outlined, Icons.inbox, 'Inbox'),
-    NavigationItem(Icons.person_outline, Icons.person, 'Profile'),
+    NavigationItem(Icons.person_outline, Icons.person, 'Profile'),  
   ];
 
   @override
