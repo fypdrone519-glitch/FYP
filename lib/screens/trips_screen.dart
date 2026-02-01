@@ -1,7 +1,9 @@
+import 'package:car_listing_app/screens/location_debug.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'booking_details_screen.dart';
 
 class TripsScreen extends StatefulWidget {
   /// If true, show trips as HOST (bookings where owner_id == current user).
@@ -14,7 +16,8 @@ class TripsScreen extends StatefulWidget {
   State<TripsScreen> createState() => _TripsScreenState();
 }
 
-class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStateMixin {
+class _TripsScreenState extends State<TripsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late final bool _viewAsHost;
   bool _isCancelling = false;
@@ -85,10 +88,7 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
                     fontSize: screenHeight * 0.018,
                     fontWeight: FontWeight.w600,
                   ),
-                  tabs: const [
-                    Tab(text: 'Upcoming'),
-                    Tab(text: 'History'),
-                  ],
+                  tabs: const [Tab(text: 'Upcoming'), Tab(text: 'History')],
                 ),
               ),
             ),
@@ -108,6 +108,18 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
           ],
         ),
       ),
+      // // Add a floating action button to trips_screen.dart for testing
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {
+      //     Navigator.push(
+      //       context,
+      //       MaterialPageRoute(
+      //         builder: (context) => const LocationDebugScreen(),
+      //       ),
+      //     );
+      //   },
+      //   child: const Icon(Icons.bug_report),
+      // ),
     );
   }
 
@@ -151,7 +163,8 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
     return months[month - 1];
   }
 
-  String _formatMonthHeader(DateTime date) => '${_monthName(date.month)} ${date.year}';
+  String _formatMonthHeader(DateTime date) =>
+      '${_monthName(date.month)} ${date.year}';
 
   String _formatDateRangeShort(DateTime start, DateTime end) {
     // Matches your UI example style: "Oct. 5 - 8, 2023"
@@ -180,7 +193,11 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
 
   Future<Map<String, dynamic>?> _loadVehicle(String vehicleId) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('vehicles')
+              .doc(vehicleId)
+              .get();
       return doc.data();
     } catch (_) {
       return null;
@@ -217,9 +234,9 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in first.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please log in first.')));
       return;
     }
 
@@ -227,42 +244,48 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancel trip?'),
-        content: const Text('Are you sure you want to cancel this trip?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('No'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Cancel trip?'),
+            content: const Text('Are you sure you want to cancel this trip?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('No'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                ),
+                child: const Text('Yes, cancel'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent),
-            child: const Text('Yes, cancel'),
-          ),
-        ],
-      ),
     );
 
     if (confirmed != true) return;
 
     setState(() => _isCancelling = true);
     try {
-      await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({
-        'status': 'Cancelled',
-        'cancelled_at': FieldValue.serverTimestamp(),
-        'cancelled_by': user.uid,
-      });
+      await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId)
+          .update({
+            'status': 'Cancelled',
+            'cancelled_at': FieldValue.serverTimestamp(),
+            'cancelled_by': user.uid,
+          });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Trip cancelled')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Trip cancelled')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to cancel: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to cancel: $e')));
     } finally {
       if (mounted) setState(() => _isCancelling = false);
     }
@@ -272,29 +295,45 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in first.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please log in first.')));
       return;
     }
 
     try {
-      await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({
-        'status': 'Approved',
-        'approved_at': FieldValue.serverTimestamp(),
-        'approved_by': user.uid,
-      });
+      await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId)
+          .update({
+            'status': 'Approved',
+            'approved_at': FieldValue.serverTimestamp(),
+            'approved_by': user.uid,
+          });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Trip approved')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Trip approved')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to approve: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to approve: $e')));
     }
+  }
+
+  void _navigateToBookingDetails(String bookingId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => BookingDetailsScreen(
+              bookingId: bookingId,
+              isHostView: _viewAsHost,
+            ),
+      ),
+    );
   }
 
   Widget _buildUpcomingTab(double screenHeight, double screenWidth) {
@@ -321,18 +360,19 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
         final docs = snapshot.data?.docs ?? [];
         final DateTime todayStart = _startOfToday();
 
-        final upcomingDocs = docs.where((d) {
-          final data = d.data();
-          if (_isCancelled(data)) return false;
-          final endTs = data['end_time'];
-          if (endTs is! Timestamp) return false;
-          return !endTs.toDate().isBefore(todayStart);
-        }).toList()
-          ..sort((a, b) {
-            final aEnd = (a.data()['end_time'] as Timestamp).toDate();
-            final bEnd = (b.data()['end_time'] as Timestamp).toDate();
-            return aEnd.compareTo(bEnd);
-          });
+        final upcomingDocs =
+            docs.where((d) {
+                final data = d.data();
+                if (_isCancelled(data)) return false;
+                final endTs = data['end_time'];
+                if (endTs is! Timestamp) return false;
+                return !endTs.toDate().isBefore(todayStart);
+              }).toList()
+              ..sort((a, b) {
+                final aEnd = (a.data()['end_time'] as Timestamp).toDate();
+                final bEnd = (b.data()['end_time'] as Timestamp).toDate();
+                return aEnd.compareTo(bEnd);
+              });
 
         if (upcomingDocs.isEmpty) {
           return Center(
@@ -344,7 +384,8 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
         }
 
         // Group by month header like your UI
-        final Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>> grouped = {};
+        final Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+        grouped = {};
         for (final d in upcomingDocs) {
           final startTs = d.data()['start_time'];
           if (startTs is! Timestamp) continue;
@@ -352,18 +393,18 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
           final key = '${start.year}-${start.month}';
           grouped.putIfAbsent(key, () => []).add(d);
         }
-        final groupKeys = grouped.keys.toList()
-          ..sort((a, b) {
-            // sort by year-month ascending
-            final aParts = a.split('-');
-            final bParts = b.split('-');
-            final ay = int.parse(aParts[0]);
-            final am = int.parse(aParts[1]);
-            final by = int.parse(bParts[0]);
-            final bm = int.parse(bParts[1]);
-            if (ay != by) return ay.compareTo(by);
-            return am.compareTo(bm);
-          });
+        final groupKeys =
+            grouped.keys.toList()..sort((a, b) {
+              // sort by year-month ascending
+              final aParts = a.split('-');
+              final bParts = b.split('-');
+              final ay = int.parse(aParts[0]);
+              final am = int.parse(aParts[1]);
+              final by = int.parse(bParts[0]);
+              final bm = int.parse(bParts[1]);
+              if (ay != by) return ay.compareTo(by);
+              return am.compareTo(bm);
+            });
 
         return SingleChildScrollView(
           padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
@@ -431,19 +472,20 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
         final docs = snapshot.data?.docs ?? [];
         final DateTime todayStart = _startOfToday();
 
-        final historyDocs = docs.where((d) {
-          final data = d.data();
-          final endTs = data['end_time'];
-          if (endTs is! Timestamp) return false;
-          // Show cancelled bookings in history even if they are in the future
-          if (_isCancelled(data)) return true;
-          return endTs.toDate().isBefore(todayStart);
-        }).toList()
-          ..sort((a, b) {
-            final aEnd = (a.data()['end_time'] as Timestamp).toDate();
-            final bEnd = (b.data()['end_time'] as Timestamp).toDate();
-            return bEnd.compareTo(aEnd);
-          });
+        final historyDocs =
+            docs.where((d) {
+                final data = d.data();
+                final endTs = data['end_time'];
+                if (endTs is! Timestamp) return false;
+                // Show cancelled bookings in history even if they are in the future
+                if (_isCancelled(data)) return true;
+                return endTs.toDate().isBefore(todayStart);
+              }).toList()
+              ..sort((a, b) {
+                final aEnd = (a.data()['end_time'] as Timestamp).toDate();
+                final bEnd = (b.data()['end_time'] as Timestamp).toDate();
+                return bEnd.compareTo(aEnd);
+              });
 
         if (historyDocs.isEmpty) {
           return Center(
@@ -455,7 +497,8 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
         }
 
         // Group by month and show "Reservation History" layout like your UI
-        final Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>> grouped = {};
+        final Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+        grouped = {};
         for (final d in historyDocs) {
           final endTs = d.data()['end_time'];
           if (endTs is! Timestamp) continue;
@@ -463,18 +506,18 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
           final key = '${end.year}-${end.month}';
           grouped.putIfAbsent(key, () => []).add(d);
         }
-        final groupKeys = grouped.keys.toList()
-          ..sort((a, b) {
-            // show latest months first in history
-            final aParts = a.split('-');
-            final bParts = b.split('-');
-            final ay = int.parse(aParts[0]);
-            final am = int.parse(aParts[1]);
-            final by = int.parse(bParts[0]);
-            final bm = int.parse(bParts[1]);
-            if (ay != by) return by.compareTo(ay);
-            return bm.compareTo(am);
-          });
+        final groupKeys =
+            grouped.keys.toList()..sort((a, b) {
+              // show latest months first in history
+              final aParts = a.split('-');
+              final bParts = b.split('-');
+              final ay = int.parse(aParts[0]);
+              final am = int.parse(aParts[1]);
+              final by = int.parse(bParts[0]);
+              final bm = int.parse(bParts[1]);
+              if (ay != by) return by.compareTo(ay);
+              return bm.compareTo(am);
+            });
 
         return SingleChildScrollView(
           padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
@@ -526,16 +569,27 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
                   builder: (_) {
                     // date range header for that month
                     final items = grouped[key]!;
-                    final endDates = items
-                        .map((d) => (d.data()['end_time'] as Timestamp).toDate())
-                        .toList()
-                      ..sort((a, b) => a.compareTo(b));
-                    final startDates = items
-                        .map((d) => (d.data()['start_time'] as Timestamp).toDate())
-                        .toList()
-                      ..sort((a, b) => a.compareTo(b));
-                    final rangeLabel =
-                        _formatHistorySectionRange(startDates.first, endDates.last);
+                    final endDates =
+                        items
+                            .map(
+                              (d) =>
+                                  (d.data()['end_time'] as Timestamp).toDate(),
+                            )
+                            .toList()
+                          ..sort((a, b) => a.compareTo(b));
+                    final startDates =
+                        items
+                            .map(
+                              (d) =>
+                                  (d.data()['start_time'] as Timestamp)
+                                      .toDate(),
+                            )
+                            .toList()
+                          ..sort((a, b) => a.compareTo(b));
+                    final rangeLabel = _formatHistorySectionRange(
+                      startDates.first,
+                      endDates.last,
+                    );
                     return Text(
                       rangeLabel,
                       style: TextStyle(
@@ -585,33 +639,39 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
         final make = (vehicle?['make'] as String?) ?? '';
         final carName = (vehicle?['car_name'] as String?) ?? '';
         final displayName =
-            (make.isNotEmpty || carName.isNotEmpty) ? '$make $carName'.trim() : 'Car';
+            (make.isNotEmpty || carName.isNotEmpty)
+                ? '$make $carName'.trim()
+                : 'Car';
 
-        final images = (vehicle?['images'] as List?)?.cast<String>() ?? const [];
+        final images =
+            (vehicle?['images'] as List?)?.cast<String>() ?? const [];
         final imageUrl = images.isNotEmpty ? images.first : '';
         final location = (vehicle?['street_address'] as String?) ?? '';
 
         return _buildReservationCard(
           screenHeight: screenHeight,
           screenWidth: screenWidth,
+          bookingId: bookingId,
           carName: displayName,
           dateRange: dateRange,
           price: 'PKR ${amountPaid.toStringAsFixed(0)}',
-          imageUrl: imageUrl.isEmpty ? 'https://via.placeholder.com/100x80' : imageUrl,
+          imageUrl: imageUrl,
           location: location.isEmpty ? '—' : location,
           isUpcoming: isUpcoming,
           // Renter should see "Waiting for the approval" once booked.
           showWaitingLabel: !_viewAsHost && _isWaitingForApproval(booking),
           // Host sees Approve button when waiting; after approved, show Cancel/Modify row.
           showApproveButton: _viewAsHost && _isWaitingForApproval(booking),
-          onApprove: _viewAsHost && _isWaitingForApproval(booking)
-              ? () async => _approveBooking(bookingId)
-              : null,
-          onCancel: isUpcoming
-              ? () async {
-                  await _cancelBooking(bookingId);
-                }
-              : null,
+          onApprove:
+              _viewAsHost && _isWaitingForApproval(booking)
+                  ? () async => _approveBooking(bookingId)
+                  : null,
+          onCancel:
+              isUpcoming
+                  ? () async {
+                    await _cancelBooking(bookingId);
+                  }
+                  : null,
         );
       },
     );
@@ -636,9 +696,12 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
         final make = (vehicle?['make'] as String?) ?? '';
         final carName = (vehicle?['car_name'] as String?) ?? '';
         final displayName =
-            (make.isNotEmpty || carName.isNotEmpty) ? '$make $carName'.trim() : 'Car';
+            (make.isNotEmpty || carName.isNotEmpty)
+                ? '$make $carName'.trim()
+                : 'Car';
 
-        final images = (vehicle?['images'] as List?)?.cast<String>() ?? const [];
+        final images =
+            (vehicle?['images'] as List?)?.cast<String>() ?? const [];
         final imageUrl = images.isNotEmpty ? images.first : '';
 
         return _buildHistoryCard(
@@ -648,17 +711,16 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
           dateRange: dateRange,
           price: 'PKR ${amountPaid.toStringAsFixed(0)}',
           status: status,
-          imageUrl: imageUrl.isEmpty ? 'https://via.placeholder.com/100x80' : imageUrl,
+          imageUrl: imageUrl,
         );
       },
     );
   }
 
-  // ---- Original UI widgets (kept consistent) ----
-
   Widget _buildReservationCard({
     required double screenHeight,
     required double screenWidth,
+    required String bookingId,
     required String carName,
     required String dateRange,
     required String price,
@@ -692,13 +754,24 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.directions_car, size: 40, color: Colors.grey);
-                    },
-                  ),
+                  child:
+                      imageUrl.isNotEmpty
+                          ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.directions_car,
+                                size: 40,
+                                color: Colors.grey,
+                              );
+                            },
+                          )
+                          : const Icon(
+                            Icons.directions_car,
+                            size: 40,
+                            color: Colors.grey,
+                          ),
                 ),
               ),
 
@@ -792,79 +865,89 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
           if (isUpcoming)
             (showApproveButton
                 ? SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: onApprove,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accent,
-                        foregroundColor: AppColors.lightText,
-                        elevation: 0,
-                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: onApprove,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: AppColors.lightText,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(
+                        vertical: screenHeight * 0.015,
                       ),
-                      child: Text(
-                        'Approve',
-                        style: TextStyle(
-                          fontSize: screenHeight * 0.016,
-                          color: AppColors.lightText,
-                          fontWeight: FontWeight.w600,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                    child: Text(
+                      'Approve',
+                      style: TextStyle(
+                        fontSize: screenHeight * 0.016,
+                        color: AppColors.lightText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                )
+                : Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isCancelling ? null : onCancel,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          padding: EdgeInsets.symmetric(
+                            vertical: screenHeight * 0.015,
+                          ),
+                          side: BorderSide(color: Colors.grey[300]!),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        child: Text(
+                          _isCancelling ? 'Cancelling...' : 'Cancel Trip',
+                          style: TextStyle(
+                            fontSize: screenHeight * 0.016,
+                            color: Colors.black,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
-                  )
-                : Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _isCancelling ? null : onCancel,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            elevation: 0,
-                            padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
-                            side: BorderSide(color: Colors.grey[300]!),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
+                    SizedBox(width: screenWidth * 0.03),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _navigateToBookingDetails(bookingId),
+                        icon: Icon(
+                          _viewAsHost ? Icons.visibility : Icons.edit,
+                          size: 16,
+                          color: AppColors.accent,
+                        ),
+                        label: Text(
+                          _viewAsHost ? 'View Details' : 'Modify',
+                          style: TextStyle(
+                            fontSize: screenHeight * 0.016,
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w600,
                           ),
-                          child: Text(
-                            _isCancelling ? 'Cancelling...' : 'Cancel Trip',
-                            style: TextStyle(
-                              fontSize: screenHeight * 0.016,
-                              color: Colors.black,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accent.withOpacity(0.1),
+                          foregroundColor: AppColors.accent,
+                          elevation: 0,
+                          padding: EdgeInsets.symmetric(
+                            vertical: screenHeight * 0.015,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
                           ),
                         ),
                       ),
-                      SizedBox(width: screenWidth * 0.03),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {},
-                          icon: Icon(Icons.edit, size: 16, color: AppColors.accent),
-                          label: Text(
-                            'Modify',
-                            style: TextStyle(
-                              fontSize: screenHeight * 0.016,
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.accent.withOpacity(0.1),
-                            foregroundColor: AppColors.accent,
-                            elevation: 0,
-                            padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )),
+                    ),
+                  ],
+                )),
         ],
       ),
     );
@@ -880,7 +963,7 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
     required String imageUrl,
   }) {
     final isCompleted = status == 'Completed';
-    
+
     return Container(
       padding: EdgeInsets.all(screenWidth * 0.04),
       decoration: BoxDecoration(
@@ -900,13 +983,24 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(Icons.directions_car, size: 35, color: Colors.grey);
-                },
-              ),
+              child:
+                  imageUrl.isNotEmpty
+                      ? Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.directions_car,
+                            size: 35,
+                            color: Colors.grey,
+                          );
+                        },
+                      )
+                      : const Icon(
+                        Icons.directions_car,
+                        size: 35,
+                        color: Colors.grey,
+                      ),
             ),
           ),
 
@@ -986,5 +1080,4 @@ class _TripsScreenState extends State<TripsScreen> with SingleTickerProviderStat
       ),
     );
   }
-
 }

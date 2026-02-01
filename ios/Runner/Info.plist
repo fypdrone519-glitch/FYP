@@ -3,6 +3,12 @@
 <plist version="1.0">
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need your location to share with the car owner during your trip</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>We need your location to share with the car owner during your trip</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>We need your location to share with the car owner during your trip</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We need your location to show your car's location</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>We need your location to show your car's location</string>

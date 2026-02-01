@@ -18,13 +18,14 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String verificationStatus = "loading";
+  String name = "loading";
   //method to fetch verification status
   Future<void> loadVerificationStatus() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
     final doc =
-        await FirebaseFirestore.instance.collection('owners').doc(uid).get();
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
     if (doc.exists) {
       setState(() {
@@ -33,11 +34,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
   }
+  Future<void> loadname() async {
+    print("loading name");
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+    if (doc.exists) {
+      setState(() {
+        // Assuming the document has a field 'name'
+        name = doc.data()?['name'] ?? "No Name";
+        print(name);
+      });
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     loadVerificationStatus();
+    loadname();
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -167,9 +185,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.border,
-                  image: const DecorationImage(
+                  image: DecorationImage(
                     image: NetworkImage(
-                      'https://ui-avatars.com/api/?name=Fawad+Naveed&size=200&background=19B394&color=fff',
+                      'https://ui-avatars.com/api/?name=${name}&size=200&background=19B394&color=fff',
                     ),
                     fit: BoxFit.cover,
                   ),
@@ -184,54 +202,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Fawad Naveed',
+                        name,
                         style: AppTextStyles.h1(context).copyWith(fontSize: 24),
                       ),
-                      Text(
-                        verificationStatus == "verified"
-                            ? "Verified"
-                            : "Not Verified",
-                        style: TextStyle(
-                          color:
-                              verificationStatus == "verified"
-                                  ? Colors.blue
-                                  : Colors.orange,
-                          fontSize: 12,
+                      TextButton(
+                        onPressed: () {
+                          if (verificationStatus != "verified") {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => const KycVerificationScreen(),
+                              ),
+                            );
+                          }
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                        child: Text(
+                          verificationStatus == "verified"
+                              ? "Verified"
+                              : "Not Verified",
+                          style: TextStyle(
+                            color:
+                                verificationStatus == "verified"
+                                    ? Colors.blue
+                                    : Colors.orange,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
-                  ),
-
-                  // Right-side verification icon
-                
-                  Positioned(
-                    right: 0,
-                    left: MediaQuery.of(  context).size.width/2 - 45,
-                    child: IconButton(
-                      onPressed: () {
-                        if (verificationStatus != "verified") {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => const KycVerificationScreen(),
-                            ),
-                          );
-                        }
-                      },
-                      icon:
-                          verificationStatus == "verified"
-                              ? const Icon(
-                                Icons.verified,
-                                color: Colors.blue,
-                                size: 22,
-                              )
-                              : const Icon(
-                                Icons.warning,
-                                color: Colors.orange,
-                                size: 20,
-                              ),
-                    ),
                   ),
                 ],
               ),

@@ -7,13 +7,17 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Add these permissions -->
+    <!-- <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     
     <application
         android:label="car_listing_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        
-        <!-- MOVE THE GOOGLE MAPS API KEY HERE (inside <application>, outside <activity>) -->
+        <!-- maps api key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBqleh1U7Ef1RxfNpl_9C3p6J05DH3tHqM"/>

@@ -1410,7 +1410,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
 
   /// Update owner's vehicle count
   Future<void> _updateOwnerVehicleCount(String ownerId) async {
-    final ownerRef = _firestore.collection('owners').doc(ownerId);
+    final ownerRef = _firestore.collection('users').doc(ownerId);
     
     await _firestore.runTransaction((transaction) async {
       final ownerDoc = await transaction.get(ownerRef);

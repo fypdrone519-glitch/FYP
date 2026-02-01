@@ -33,7 +33,7 @@ android {
         versionName = flutter.versionName
         applicationId = "com.carlisting.car_listing_app"
         minSdk = 23
-        targetSdk = 33
+        targetSdk = 34 // changed from 33 to 34
     }
 
     buildTypes {
