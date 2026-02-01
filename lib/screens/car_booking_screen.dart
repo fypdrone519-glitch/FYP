@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:car_listing_app/services/kyc_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:local_auth/local_auth.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
@@ -33,6 +35,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _contactController = TextEditingController();
+  final LocalAuthentication _localAuth = LocalAuthentication(); // For biometric auth
 
   @override
   void initState() {
@@ -56,13 +59,74 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   String get _drivingOptions => widget.vehicleData['driving_options'] ?? 'Self Driving';
   bool get _canToggleDriver => _drivingOptions == 'Both';
   bool get _onlyWithDriver => _drivingOptions == 'With Driver';
-  bool get isVerified => status?.trim().toLowerCase() == "verified";
+  // Check if user's KYC verification status is VERIFIED (case-insensitive)
+  bool get isVerified => status?.trim().toUpperCase() == "VERIFIED";
   bool get isLoading => status == "loading";
 
   // Validation flags for required fields
   bool _fullNameError = false;
   bool _emailError = false;
   bool _contactError = false;
+
+  /// Performs biometric authentication (Face ID on iOS, Fingerprint on Android)
+  /// Returns true if authentication succeeds, false otherwise
+  Future<bool> _authenticateWithBiometrics() async {
+    try {
+      // Check if biometric authentication is available
+      final bool canAuthenticateWithBiometrics = await _localAuth.canCheckBiometrics;
+      final bool canAuthenticate = canAuthenticateWithBiometrics || await _localAuth.isDeviceSupported();
+
+      if (!canAuthenticate) {
+        print('⚠️ Biometric authentication not available on this device');
+        // If biometrics not available, show error and return false
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Biometric authentication is not available on this device'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return false;
+      }
+
+      // Determine biometric type message based on platform
+      String biometricTypeMessage = 'Authenticate to complete booking';
+      if (Platform.isIOS) {
+        biometricTypeMessage = 'Use Face ID to confirm booking';
+      } else if (Platform.isAndroid) {
+        biometricTypeMessage = 'Use Fingerprint to confirm booking';
+      }
+
+      // Perform biometric authentication
+      final bool didAuthenticate = await _localAuth.authenticate(
+        localizedReason: biometricTypeMessage,
+        options: const AuthenticationOptions(
+          stickyAuth: true, // Keep dialog until success or explicit cancel
+          biometricOnly: true, // Only biometric, no PIN/password fallback
+        ),
+      );
+
+      if (didAuthenticate) {
+        print('✅ Biometric authentication successful for booking');
+        return true;
+      } else {
+        print('❌ Biometric authentication failed');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Biometric authentication error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Authentication error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return false;
+    }
+  }
 
 
   // Future<void> _getstatus() async {
@@ -956,6 +1020,28 @@ Widget _buildPayButton() {
               final String renterId = user.uid;
               final String renterEmail = _emailController.text.trim();
 
+              // Step 1: Perform biometric authentication before proceeding with booking
+              final bool biometricAuthenticated = await _authenticateWithBiometrics();
+              
+              if (!biometricAuthenticated) {
+                // Biometric authentication failed or was cancelled
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Biometric authentication is required to complete booking'),
+                      duration: Duration(seconds: 2),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+                return;
+              }
+
+              // Step 2: Proceed with booking after successful biometric authentication
+              // Format dates as yyyy-MM-dd for availability matching
+              final startDateStr = _pickupDate!.toIso8601String().split('T')[0];
+              final endDateStr = _returnDate!.toIso8601String().split('T')[0];
+
               try {
                 await FirebaseFirestore.instance
                     .collection('bookings')
@@ -965,14 +1051,17 @@ Widget _buildPayButton() {
                   'renter_id': renterId,
                   'booking_type': bookingType,
                   // Trip status (host must approve)
-                  'status': 'Waiting for the approval',
+                  'status': 'PENDING', // Status will change to APPROVED when host approves
                   'renter_full_name': _fullNameController.text.trim(),
                   'renter_contact': _contactController.text.trim(),
                   'renter_email': renterEmail,
                   'gender': _selectedGender,
                   'rental_period': _selectedRentalPeriod,
-                  'start_time': Timestamp.fromDate(_pickupDate!),
-                  'end_time': Timestamp.fromDate(_returnDate!),
+                  // Store dates in both formats for compatibility
+                  'startDate': startDateStr, // yyyy-MM-dd format for availability matching
+                  'endDate': endDateStr,     // yyyy-MM-dd format for availability matching
+                  'start_time': Timestamp.fromDate(_pickupDate!), // Timestamp for legacy support
+                  'end_time': Timestamp.fromDate(_returnDate!),   // Timestamp for legacy support
                   'amount_paid': _totalPrice,
                   'rent_per_day': rentPerDay,
                   'created_at': FieldValue.serverTimestamp(),

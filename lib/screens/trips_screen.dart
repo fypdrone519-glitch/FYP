@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../services/booking_service.dart';
 import 'booking_details_screen.dart';
 
 class TripsScreen extends StatefulWidget {
@@ -21,6 +22,8 @@ class _TripsScreenState extends State<TripsScreen>
   late TabController _tabController;
   late final bool _viewAsHost;
   bool _isCancelling = false;
+  bool _isApproving = false; // Track approval in progress
+  final BookingService _bookingService = BookingService(); // Atomic booking service
 
   @override
   void initState() {
@@ -208,6 +211,7 @@ class _TripsScreenState extends State<TripsScreen>
     final raw = (booking['status'] as String?)?.trim().toLowerCase();
     if (raw == 'cancelled' || raw == 'canceled') return 'Cancelled';
     if (raw == 'approved') return 'Approved';
+    if (raw == 'rejected') return 'Rejected';
     if (raw == 'completed') return 'Completed';
     if (raw == 'confirmed') return 'Confirmed';
     if (raw == 'pending') return 'Pending';
@@ -225,7 +229,9 @@ class _TripsScreenState extends State<TripsScreen>
 
   bool _isWaitingForApproval(Map<String, dynamic> booking) {
     final raw = (booking['status'] as String?)?.trim().toLowerCase();
-    return raw == 'waiting for the approval' || raw == 'waiting';
+    return raw == 'waiting for the approval' || 
+           raw == 'waiting' || 
+           raw == 'pending'; // New PENDING status
   }
 
   // (reserved for future use) approved check can be added when Modify depends on it
@@ -291,6 +297,8 @@ class _TripsScreenState extends State<TripsScreen>
     }
   }
 
+  /// Approves a booking using atomic transaction to prevent double-booking
+  /// Blocks the requested dates in vehicle availability
   Future<void> _approveBooking(String bookingId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -301,25 +309,44 @@ class _TripsScreenState extends State<TripsScreen>
       return;
     }
 
+    if (_isApproving) return; // Prevent double-tap
+
+    setState(() => _isApproving = true);
+
     try {
-      await FirebaseFirestore.instance
-          .collection('bookings')
-          .doc(bookingId)
-          .update({
-            'status': 'Approved',
-            'approved_at': FieldValue.serverTimestamp(),
-            'approved_by': user.uid,
-          });
+      // Use atomic transaction to approve booking and block availability
+      final success = await _bookingService.approveBookingWithAvailabilityBlock(
+        bookingId,
+      );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Trip approved')));
+
+      if (success) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(
+          const SnackBar(
+            content: Text('Trip approved and dates blocked successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
+      
+      // Display user-friendly error message
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Failed to approve: $e')));
+      ).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isApproving = false);
     }
   }
 

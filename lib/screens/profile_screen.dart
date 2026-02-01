@@ -207,7 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       TextButton(
                         onPressed: () {
-                          if (verificationStatus != "verified") {
+                          if (verificationStatus != "VERIFIED") {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -225,12 +225,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         child: Text(
-                          verificationStatus == "verified"
+                          verificationStatus == "VERIFIED"
                               ? "Verified"
                               : "Not Verified",
                           style: TextStyle(
                             color:
-                                verificationStatus == "verified"
+                                verificationStatus == "VERIFIED"
                                     ? Colors.blue
                                     : Colors.orange,
                             fontSize: 14,

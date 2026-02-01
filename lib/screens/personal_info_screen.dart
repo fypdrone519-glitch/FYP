@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:car_listing_app/screens/otp_verification_screen.dart';
 import 'package:car_listing_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/kyc_service.dart';
 import '../widgets/kyc_stepper.dart';
 
@@ -22,6 +24,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   final cnicController = TextEditingController();
   String? formatted_phone;
   bool _isSending = false;
+  File? _selfieImage; // Store captured selfie
+  final ImagePicker _picker = ImagePicker();
 
   Future<void> saveAndNext() async {
     if (nameController.text.isEmpty ||
@@ -38,6 +42,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
     setState(() => _isSending = true);
     try {
+      // Save personal info data
       await service.saveData({
         "full_name": nameController.text,
         "phone": phoneController.text,
@@ -45,6 +50,12 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         "email": emailController.text,
         "address": addressController.text,
       });
+
+      // Upload selfie if captured
+      if (_selfieImage != null) {
+        final selfieUrl = await service.uploadSelfie(_selfieImage!);
+        await service.saveSelfieUrl(selfieUrl);
+      }
 
       // Send verification email (user clicks link in inbox, then verifies on next screen)
       await service.sendEmailVerification(emailController.text);
@@ -67,12 +78,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder:
-              (context) => OtpVerificationScreen(
-                phoneNumber: formatted_phone ?? '',
-                email: emailController.text,
-                verificationId: verificationId,
-              ),
+          builder: (context) => OtpVerificationScreen(
+            phoneNumber: formatted_phone ?? '',
+            email: emailController.text,
+            verificationId: verificationId,
+          ),
         ),
       );
     } catch (e) {
@@ -172,6 +182,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 validator: Validators.validateAddress,
               ),
 
+              const SizedBox(height: 20),
+
+              // Selfie Capture Section
+              _buildSelfieCard(),
+
               // Replace Spacer with SizedBox
               SizedBox(
                 height: MediaQuery.of(context).viewInsets.bottom > 0 ? 20 : 40,
@@ -211,6 +226,157 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         ),
       ),
     );
+  }
+
+  /// Builds the selfie capture card UI
+  Widget _buildSelfieCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFD1D5DB),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.camera_alt,
+                color: AppColors.accent,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Live Selfie',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Capture a live selfie for verification',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Display captured selfie or capture button
+          if (_selfieImage != null)
+            Column(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    _selfieImage!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _captureSelfie,
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Retake'),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: AppColors.accent),
+                          foregroundColor: AppColors.accent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() => _selfieImage = null);
+                        },
+                        icon: const Icon(Icons.delete, size: 18),
+                        label: const Text('Remove'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade400,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _captureSelfie,
+                icon: const Icon(Icons.camera_alt, size: 20, color: AppColors.cardSurface,),
+                label: const Text('Capture Selfie'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: AppColors.cardSurface,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Captures selfie using device camera
+  Future<void> _captureSelfie() async {
+    try {
+      // Open camera to capture selfie (front camera)
+      final XFile? photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front, // Use front camera for selfie
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (photo != null) {
+        setState(() {
+          _selfieImage = File(photo.path);
+        });
+        print("Selfie captured: ${photo.path}");
+      }
+    } catch (e) {
+      print("Error capturing selfie: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to capture selfie: $e")),
+        );
+      }
+    }
   }
 }
 

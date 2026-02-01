@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class KycService {
   final _auth = FirebaseAuth.instance;
@@ -130,5 +131,59 @@ class KycService {
 
   Future<DocumentSnapshot> getKyc() async {
     return await _firestore.collection("kyc_requests").doc(uid).get();
+  }
+
+  /// Uploads selfie image to Firebase Storage under kyc/{userId}/selfie.jpg
+  /// Returns the download URL of the uploaded selfie
+  Future<String> uploadSelfie(File file) async {
+    print("Uploading selfie for user $uid");
+    final ref = _storage.ref().child("kyc/$uid/selfie.jpg");
+    await ref.putFile(file);
+    final url = await ref.getDownloadURL();
+    print("Selfie uploaded successfully: $url");
+    return url;
+  }
+
+  /// Gets the device ID (platform-specific identifier)
+  /// Returns device identifier without hashing
+  Future<String> getDeviceId() async {
+    final deviceInfo = DeviceInfoPlugin();
+    String deviceId = 'unknown';
+
+    if (Platform.isAndroid) {
+      // Get Android device ID
+      final androidInfo = await deviceInfo.androidInfo;
+      deviceId = androidInfo.id; // Android ID (unique per device)
+      print("Android Device ID: $deviceId");
+    } else if (Platform.isIOS) {
+      // Get iOS device ID
+      final iosInfo = await deviceInfo.iosInfo;
+      deviceId = iosInfo.identifierForVendor ?? 'unknown'; // iOS Vendor ID
+      print("iOS Device ID: $deviceId");
+    }
+
+    return deviceId;
+  }
+
+  /// Saves biometric verification status and device ID to Firestore
+  /// Called after successful biometric authentication
+  Future<void> saveBiometricVerification(String deviceId) async {
+    print("Saving biometric verification for user $uid with device $deviceId");
+    await _firestore.collection("kyc_requests").doc(uid).set({
+      "biometric_verified": true,
+      "device_id": deviceId,
+      "biometric_verified_at": FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    print("Biometric verification saved successfully");
+  }
+
+  /// Saves selfie URL to Firestore kyc_requests collection
+  Future<void> saveSelfieUrl(String selfieUrl) async {
+    print("Saving selfie URL for user $uid");
+    await _firestore.collection("kyc_requests").doc(uid).set({
+      "selfie_url": selfieUrl,
+      "selfie_uploaded_at": FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    print("Selfie URL saved successfully");
   }
 }

@@ -2,7 +2,7 @@ import 'package:car_listing_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:car_listing_app/screens/upload_documents_screen.dart';
+import 'package:car_listing_app/screens/biometric_verification_screen.dart';
 import '../services/kyc_service.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
@@ -167,10 +167,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       });
 
       if (mounted) {
+        // Navigate to Biometric Verification screen after successful OTP verification
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const UploadDocumentsScreen(),
+            builder: (context) => const BiometricVerificationScreen(),
           ),
         );
       }
