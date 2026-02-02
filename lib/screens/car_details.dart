@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:car_listing_app/screens/car_booking_screen.dart';
+import 'package:car_listing_app/screens/chat_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class CarDetails extends StatefulWidget {
@@ -284,8 +284,9 @@ class _CarDetailsState extends State<CarDetails> {
   Widget _buildCarInfo() {
     final String make = _vehicleData!['make'] ?? 'Unknown';
     final String model = _vehicleData!['car_name'] ?? 'Model';
-    final String streetaddress = _vehicleData!['street_address'] ?? 'street address';
-   
+    final String streetaddress =
+        _vehicleData!['street_address'] ?? 'street address';
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -333,78 +334,106 @@ class _CarDetailsState extends State<CarDetails> {
                 streetaddress,
                 style: AppTextStyles.body(
                   context,
-                ).copyWith(color: Colors.grey[600],fontSize: 14),
+                ).copyWith(color: Colors.grey[600], fontSize: 14),
               ),
             ],
           ),
-           const SizedBox(height: 4),
+          const SizedBox(height: 4),
         ],
       ),
     );
   }
 
   Widget _buildOwnerInfo() {
-    final String ownerName = _vehicleData!['car_name'] ?? 'Owner Name';
+    final String? ownerId = _vehicleData!['owner_id'] as String?;
     final String ownerContact = _vehicleData!['owner_contact'] ?? '';
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: Colors.grey[200],
-            child: const Icon(Icons.person, color: Colors.grey),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return FutureBuilder<DocumentSnapshot>(
+      future:
+          ownerId != null && ownerId.isNotEmpty
+              ? _firestore.collection('users').doc(ownerId).get()
+              : null,
+      builder: (context, snapshot) {
+        String ownerName = 'Owner';
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final ownerData = snapshot.data!.data() as Map<String, dynamic>?;
+          if (ownerData != null) {
+            ownerName =
+                ownerData['name'] ??
+                ownerData['email']?.split('@')[0] ??
+                'Owner';
+          }
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: Colors.grey[200],
+                child: const Icon(Icons.person, color: Colors.grey),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      ownerName,
-                      style: AppTextStyles.body(
-                        context,
-                      ).copyWith(fontWeight: FontWeight.w600),
+                    Row(
+                      children: [
+                        Text(
+                          ownerName,
+                          style: AppTextStyles.body(
+                            context,
+                          ).copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.verified,
+                          color: Colors.blue,
+                          size: 16,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.verified, color: Colors.blue, size: 16),
                   ],
                 ),
-              ],
-            ),
-          ),
-          if (ownerContact.isNotEmpty) ...[
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.phone, size: 20, color: Colors.grey),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.chat_bubble_outline,
-              size: 20,
-              color: Colors.grey,
-            ),
+              if (ownerContact.isNotEmpty) ...[
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.phone, size: 20, color: Colors.grey),
+                ),
+                const SizedBox(width: 8),
+              ],
+              GestureDetector(
+                onTap: _openChatWithOwner,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.chat_bubble_outline,
+                    size: 20,
+                    color: AppColors.accent,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
+
   // Helper method to get icon and category for feature
   Map<String, dynamic> _getFeatureDetails(String feature) {
     final featureLower = feature.toLowerCase();
@@ -885,10 +914,11 @@ class _CarDetailsState extends State<CarDetails> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute<void>(
-                                  builder: (context) => BookingDetailsScreen(
-                                    vehicleData: _vehicleData!,
-                                    vehicleId: widget.vehicleId,
-                                  ), 
+                                  builder:
+                                      (context) => BookingDetailsScreen(
+                                        vehicleData: _vehicleData!,
+                                        vehicleId: widget.vehicleId,
+                                      ),
                                 ),
                               );
                             },
@@ -937,6 +967,65 @@ class _CarDetailsState extends State<CarDetails> {
     return months[month - 1];
   }
 
+  void _openChatWithOwner() async {
+    if (_vehicleData == null) return;
+
+    // Get the owner ID from the vehicle data
+    final String? ownerId = _vehicleData!['owner_id'] as String?;
+
+    if (ownerId == null || ownerId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Owner information not available'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Fetch owner information from Users collection
+    try {
+      final ownerDoc = await _firestore.collection('users').doc(ownerId).get();
+
+      if (!ownerDoc.exists || ownerDoc.data() == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Owner not found'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
+      final ownerData = ownerDoc.data()!;
+      final String ownerName =
+          ownerData['name'] ?? ownerData['email']?.split('@')[0] ?? 'Owner';
+      final String ownerEmail = ownerData['email'] ?? '';
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => ChatDetailScreen(
+                receiverId: ownerId,
+                receiverName: ownerName,
+                receiverEmail: ownerEmail,
+              ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 
   void _proceedToBooking() {
     if (_rangeStart != null && _rangeEnd != null) {

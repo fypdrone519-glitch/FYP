@@ -2,9 +2,11 @@ import 'package:car_listing_app/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import '../services/unread_message_service.dart';
 import 'map_screen.dart';
 import 'profile_screen.dart';
 import 'trips_screen.dart';
+import 'inbox_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -16,6 +18,7 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0; // Tracks the screen index (0-3)
   int _selectedNavIndex = 0; // Tracks the selected nav bar item (0-4)
+  final UnreadMessageService _unreadService = UnreadMessageService();
 
   final List<Widget> _screens = [
     const HomeScreenContent(), // Index 0: Home
@@ -35,6 +38,21 @@ class _MainNavigationState extends State<MainNavigation> {
     NavigationItem(Icons.inbox_outlined, Icons.inbox, 'Inbox'),
     NavigationItem(Icons.person_outline, Icons.person, 'Profile'),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Start listening for unread messages when navigation loads
+    _unreadService.startListening();
+  }
+
+  @override
+  void dispose() {
+    // Clean up listeners when navigation is disposed
+    // Note: Service is a singleton, so this doesn't fully dispose it
+    // Full cleanup happens on logout via stopListening()
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +104,9 @@ class _MainNavigationState extends State<MainNavigation> {
     bool isSelected,
     int index,
   ) {
+    // Check if this is the Inbox item (index 3)
+    final isInbox = (label == 'Inbox');
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -115,11 +136,43 @@ class _MainNavigationState extends State<MainNavigation> {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                isSelected ? filledIcon : outlinedIcon,
-                color: isSelected ? AppColors.accent : AppColors.secondaryText,
-                size: 24,
-              ),
+              // Wrap inbox icon with Stack to show red dot
+              if (isInbox)
+                ValueListenableBuilder<bool>(
+                  valueListenable: _unreadService.hasUnreadMessages,
+                  builder: (context, hasUnread, child) {
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(
+                          isSelected ? filledIcon : outlinedIcon,
+                          color: isSelected ? AppColors.accent : AppColors.secondaryText,
+                          size: 24,
+                        ),
+                        // Red dot indicator - only show if hasUnread is true
+                        if (hasUnread)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                )
+              else
+                Icon(
+                  isSelected ? filledIcon : outlinedIcon,
+                  color: isSelected ? AppColors.accent : AppColors.secondaryText,
+                  size: 24,
+                ),
               const SizedBox(height: 4),
               Text(
                 label,
@@ -146,17 +199,5 @@ class NavigationItem {
   final String label;
 
   NavigationItem(this.outlinedIcon, this.filledIcon, this.label);
-}
-
-// Placeholder screens for other tabs
-class InboxScreen extends StatelessWidget {
-  const InboxScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Inbox Screen - Coming Soon')),
-    );
-  }
 }
 

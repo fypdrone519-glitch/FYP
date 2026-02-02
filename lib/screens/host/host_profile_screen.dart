@@ -1,6 +1,7 @@
 import 'package:car_listing_app/screens/auth/login_screen.dart';
 import 'package:car_listing_app/screens/host_navigation.dart';
 import 'package:car_listing_app/screens/main_navigation.dart';
+import 'package:car_listing_app/services/unread_message_service.dart';
 import 'package:car_listing_app/theme/app_colors.dart';
 import 'package:car_listing_app/theme/app_spacing.dart';
 import 'package:car_listing_app/theme/app_text_styles.dart';
@@ -17,6 +18,10 @@ class HostProfileScreen extends StatefulWidget {
 class _HostProfileScreenState extends State<HostProfileScreen> {
   Future<void> _logout(BuildContext context) async {
   try {
+    // CRITICAL: Stop unread message listeners before signing out
+    // This prevents memory leaks and invalid Firestore queries after logout
+    UnreadMessageService().stopListening();
+    
     await FirebaseAuth.instance.signOut();
     
     // Navigate to login screen and remove all previous routes
