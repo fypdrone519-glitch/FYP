@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 import '../services/chat_service.dart';
+import '../services/presence_service.dart';
 import 'package:intl/intl.dart';
 
 class ChatDetailScreen extends StatefulWidget {
@@ -25,18 +26,33 @@ class ChatDetailScreen extends StatefulWidget {
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ChatService _chatService = ChatService();
+  final PresenceService _presenceService = PresenceService();
   final ScrollController _scrollController = ScrollController();
+  String? _chatRoomId;
 
   @override
   void initState() {
     super.initState();
+    
+    // Generate chat room ID
+    final senderId = _chatService.auth.currentUser!.uid;
+    final List<String> ids = [senderId, widget.receiverId];
+    ids.sort();
+    _chatRoomId = ids.join('_');
+    
     // Mark messages as read when user opens this chat
     // This updates Firestore and triggers UnreadMessageService to hide the red dot
     _chatService.markMessagesAsRead(widget.receiverId);
+    
+    // Set presence to indicate user is in this chat
+    // This prevents push notifications while user is actively viewing the chat
+    _presenceService.setActiveChatRoom(_chatRoomId!);
   }
 
   @override
   void dispose() {
+    // Clear presence when leaving chat
+    _presenceService.clearActiveChatRoom();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();

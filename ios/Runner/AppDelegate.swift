@@ -1,6 +1,7 @@
 import UIKit
 import Flutter
 import Firebase
+import FirebaseMessaging
 import UserNotifications
 import GoogleMaps
 
@@ -38,6 +39,12 @@ import GoogleMaps
   
   // Handle APNs token registration
   override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+    print("📱 APNs token received")
+    
+    // Set APNs token for Firebase Messaging (required for FCM on iOS)
+    Messaging.messaging().apnsToken = deviceToken
+    
+    // Set APNs token for Firebase Auth (required for phone auth)
     #if DEBUG
     Auth.auth().setAPNSToken(deviceToken, type: .sandbox)
     #else

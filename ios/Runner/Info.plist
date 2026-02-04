@@ -4,6 +4,8 @@
 <dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>We use Face ID to securely authenticate you and protect your account.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>We need to send you notifications about your bookings and messages.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We need your location to share with the car owner during your trip</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

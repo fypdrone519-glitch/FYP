@@ -9,12 +9,15 @@ import 'screens/auth/welcome_screen.dart';
 import 'theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'services/trip_monitoring_service.dart';
+import 'services/notification_service.dart';
 
 void main() async {
-
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize notification service
+  await NotificationService().initialize();
 
   runApp(const MyApp());
 }
@@ -27,11 +30,16 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     TripMonitoringService().startMonitoring();
+    
+    // Set navigator key for notification navigation
+    NotificationService.navigatorKey = _navigatorKey;
   }
 
    @override
@@ -53,6 +61,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'CarShare - Car Listing App',
       debugShowCheckedModeBanner: false,
+      navigatorKey: _navigatorKey,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
