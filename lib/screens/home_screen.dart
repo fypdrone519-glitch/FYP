@@ -1,3 +1,4 @@
+import 'package:car_listing_app/screens/notifications_screen.dart';
 import 'package:flutter/material.dart';
 import '../models/car.dart';
 import '../models/car_filter_model.dart';
@@ -230,7 +231,14 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       ),
                       GestureDetector(
                         onTap: () {
-                          // Navigate to profile
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) {
+                                return NotificationsScreen();
+                              },
+                            ),
+                          );
                         },
                         child: Container(
                           width: 40,
