@@ -11,8 +11,10 @@ import 'package:table_calendar/table_calendar.dart';
 
 class CarDetails extends StatefulWidget {
   final String vehicleId;
+  // for top padding
+  final bool fromMap;
 
-  const CarDetails({super.key, required this.vehicleId});
+  const CarDetails({super.key, required this.vehicleId, this.fromMap = false});
 
   @override
   State<CarDetails> createState() => _CarDetailsState();
@@ -32,6 +34,7 @@ class _CarDetailsState extends State<CarDetails> {
   DateTime? _rangeEnd;
   Set<DateTime> _availableDates = {}; // Available dates from Firebase
   bool _isLoadingDates = false;
+
 
   @override
   void initState() {
@@ -156,8 +159,8 @@ class _CarDetailsState extends State<CarDetails> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.only(
-        top: AppSpacing.lg * 2,
+      padding: EdgeInsets.only(
+        top: widget.fromMap ? AppSpacing.md : AppSpacing.lg * 2,
         left: AppSpacing.md,
         right: AppSpacing.md,
         bottom: AppSpacing.sm,

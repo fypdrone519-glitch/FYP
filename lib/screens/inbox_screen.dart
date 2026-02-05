@@ -17,37 +17,152 @@ class InboxScreen extends StatefulWidget {
 class _InboxScreenState extends State<InboxScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    
     return Scaffold(
-      backgroundColor: AppColors.foreground,
-      appBar: AppBar(
-        backgroundColor: AppColors.cardSurface,
-        elevation: 0,
-        title: Text('Messages', style: AppTextStyles.h1(context)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: AppColors.primaryText),
-            onPressed: () {
-              // TODO: Implement search functionality
+      backgroundColor: AppColors.background,
+      body: Stack(
+        children: [
+          // Header with gradient background (positioned at top)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                color: AppColors.background,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Text(
+                      'Messages',
+                      style: TextStyle(
+                        fontSize: screenHeight * 0.032,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    
+                    // Search bar
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.iconsBackground,
+                        borderRadius: BorderRadius.circular(26),
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.search,
+                            color: AppColors.secondaryText,
+                            size: 20,
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              onChanged: (value) {
+                                setState(() {
+                                  _searchQuery = value.toLowerCase();
+                                });
+                              },
+                              style: TextStyle(
+                                color: AppColors.foreground,
+                                fontSize: 14,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'Search...',
+                                hintStyle: TextStyle(
+                                  color: AppColors.secondaryText,
+                                  fontSize: 14,
+                                ),
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          // Chat list with DraggableScrollableSheet (can overlap header)
+          DraggableScrollableSheet(
+            initialChildSize: 0.75, // Start at 75% of screen height
+            minChildSize: 0.70,      // Can drag down to 60%
+            maxChildSize: 0.85,     // Can drag up to 90% (overlapping header)
+            builder: (context, scrollController) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // Drag handle
+                    Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    // Conversation list
+                    Expanded(
+                      child: _buildConversationList(scrollController),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ],
       ),
-      body: _buildConversationList(),
     );
   }
 
-  Widget _buildConversationList() {
+  Widget _buildConversationList(ScrollController scrollController) {
     return StreamBuilder<List<String>>(
       stream: _getChatRoomsStream(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          print('====== INBOX ERROR ======');
-          print('Error: ${snapshot.error}');
-          print('Stack trace: ${snapshot.stackTrace}');
-          print('========================');
+          // print('====== INBOX ERROR ======');
+          // print('Error: ${snapshot.error}');
+          // print('Stack trace: ${snapshot.stackTrace}');
+          // print('========================');
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -68,30 +183,29 @@ class _InboxScreenState extends State<InboxScreen> {
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          // print('====== INBOX LOADING ======');
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: CircularProgressIndicator(
+              color: AppColors.accent,
+            ),
+          );
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          // print('====== INBOX EMPTY ======');
-          // print('Has data: ${snapshot.hasData}');
-          // print('Data: ${snapshot.data}');
-          // print('========================');
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.inbox_outlined,
+                  Icons.chat_bubble_outline,
                   size: 64,
-                  color: AppColors.secondaryText,
+                  color: Colors.grey[300],
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   'No messages yet',
-                  style: AppTextStyles.h2(
-                    context,
-                  ).copyWith(color: AppColors.secondaryText),
+                  style: AppTextStyles.h2(context).copyWith(
+                    color: AppColors.secondaryText,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
@@ -103,18 +217,16 @@ class _InboxScreenState extends State<InboxScreen> {
           );
         }
 
-        // print('====== INBOX DATA ======');
-        // print('Chat rooms count: ${snapshot.data!.length}');
-        // print('Chat room IDs: ${snapshot.data}');
-        // print('=======================');
-
         return ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+          controller: scrollController,
+          padding: const EdgeInsets.only(
+            top: AppSpacing.md,
+            left: AppSpacing.sm,
+            right: AppSpacing.sm,
+          ),
           itemCount: snapshot.data!.length,
           itemBuilder: (context, index) {
             final chatRoomId = snapshot.data![index];
-            // print('Building conversation item for: $chatRoomId');
-
             return _buildConversationItem(chatRoomId);
           },
         );
@@ -135,24 +247,19 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   Widget _buildConversationItem(String chatRoomId) {
-    // print('_buildConversationItem called for: $chatRoomId');
     final currentUserId = _auth.currentUser!.uid;
-    // print('Current user ID: $currentUserId');
-
     final otherUserId = chatRoomId
         .split('_')
         .firstWhere((id) => id != currentUserId);
-    //print('Other user ID: $otherUserId');
 
     return StreamBuilder<QuerySnapshot>(
-      stream:
-          _firestore
-              .collection('Chat_rooms')
-              .doc(chatRoomId)
-              .collection('messages')
-              .orderBy('timestamp', descending: true)
-              .limit(1)
-              .snapshots(),
+      stream: _firestore
+          .collection('Chat_rooms')
+          .doc(chatRoomId)
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .limit(1)
+          .snapshots(),
       builder: (context, messageSnapshot) {
         String lastMessage = '';
         String timestamp = '';
@@ -178,11 +285,17 @@ class _InboxScreenState extends State<InboxScreen> {
             if (userSnapshot.hasData && userSnapshot.data!.exists) {
               final userData =
                   userSnapshot.data!.data() as Map<String, dynamic>;
-              userName =
-                  userData['name'] ??
+              userName = userData['name'] ??
                   userData['email']?.split('@')[0] ??
                   'User';
               userEmail = userData['email'] ?? '';
+            }
+
+            // Filter by search query
+            if (_searchQuery.isNotEmpty &&
+                !userName.toLowerCase().contains(_searchQuery) &&
+                !lastMessage.toLowerCase().contains(_searchQuery)) {
+              return const SizedBox.shrink();
             }
 
             return StreamBuilder<int>(
@@ -190,109 +303,144 @@ class _InboxScreenState extends State<InboxScreen> {
               builder: (context, unreadSnapshot) {
                 final unreadCount = unreadSnapshot.data ?? 0;
 
-                return Material(
-                  color: AppColors.cardSurface,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => ChatDetailScreen(
-                                receiverId: otherUserId,
-                                receiverName: userName,
-                                receiverEmail: userEmail,
-                              ),
-                        ),
-                      );
-                    },
-                    child: Stack(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                            vertical: AppSpacing.sm,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(color: AppColors.foreground, width: 1),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatDetailScreen(
+                              receiverId: otherUserId,
+                              receiverName: userName,
+                              receiverEmail: userEmail,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              // Avatar
-                              CircleAvatar(
-                                radius: 28,
-                                backgroundColor: AppColors.accent.withValues(
-                                  alpha: 0.1,
-                                ),
-                                child: Text(
-                                  userName[0].toUpperCase(),
-                                  style: AppTextStyles.h2(
-                                    context,
-                                  ).copyWith(color: AppColors.accent),
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              // Message content
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          userName,
-                                          style: AppTextStyles.body(
-                                            context,
-                                          ).copyWith(fontWeight: FontWeight.w600),
-                                        ),
-                                        if (timestamp.isNotEmpty)
-                                          Text(
-                                            timestamp,
-                                            style: AppTextStyles.meta(context),
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      lastMessage.isEmpty
-                                          ? 'No messages yet'
-                                          : isCurrentUserSender
-                                          ? 'You: $lastMessage'
-                                          : lastMessage,
-                                      style: AppTextStyles.meta(context),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        child: Row(
+                          children: [
+                            // Avatar with gradient background
+                            Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    AppColors.accent.withValues(alpha: 0.8),
+                                    AppColors.accent,
                                   ],
                                 ),
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                            ],
-                          ),
-                        ),
-                        if (unreadCount > 0)
-                          Positioned(
-                            bottom: AppSpacing.sm,
-                            right: AppSpacing.sm,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppColors.accent,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '$unreadCount',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                              child: Center(
+                                child: Text(
+                                  userName[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
+                            const SizedBox(width: AppSpacing.sm),
+                            
+                            // Message content
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          userName,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (timestamp.isNotEmpty)
+                                        Text(
+                                          timestamp,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[400],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          lastMessage.isEmpty
+                                              ? 'Sent a message'
+                                              : isCurrentUserSender
+                                                  ? 'You: $lastMessage'
+                                                  : lastMessage,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (unreadCount > 0) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          width: 20,
+                                          height: 20,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.accent,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              unreadCount > 9
+                                                  ? '9+'
+                                                  : '$unreadCount',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 );
@@ -306,25 +454,16 @@ class _InboxScreenState extends State<InboxScreen> {
 
   Stream<List<String>> _getChatRoomsStream() {
     final currentUserId = _auth.currentUser!.uid;
-    // print('====== GET CHAT ROOMS STREAM ======');
-    // print('Current user ID: $currentUserId');
 
     return _firestore
         .collection('Chat_rooms')
         .where('participants', arrayContains: currentUserId)
-        .orderBy('lastMessageTime', descending: true) // Sort by most recent message
+        .orderBy('lastMessageTime', descending: true)
         .snapshots()
         .map((snapshot) {
-          // print('Chat_rooms snapshot received');
-          // print('Total chat rooms for user: ${snapshot.docs.length}');
-
-          // Return the chat room IDs (already sorted by lastMessageTime)
-          final chatRoomIds = snapshot.docs.map((doc) => doc.id).toList();
-
-          // print('Chat room IDs (sorted): $chatRoomIds');
-          // print('==================================');
-          return chatRoomIds;
-        });
+      final chatRoomIds = snapshot.docs.map((doc) => doc.id).toList();
+      return chatRoomIds;
+    });
   }
 
   String _formatTimestamp(Timestamp timestamp) {
@@ -343,9 +482,9 @@ class _InboxScreenState extends State<InboxScreen> {
     } else if (messageDate == yesterday) {
       return 'Yesterday';
     } else if (now.difference(dateTime).inDays < 7) {
-      return DateFormat('EEEE').format(dateTime);
+      return DateFormat('EEE').format(dateTime);
     } else {
-      return DateFormat('dd/MM/yy').format(dateTime);
+      return DateFormat('dd MMM').format(dateTime);
     }
   }
 }

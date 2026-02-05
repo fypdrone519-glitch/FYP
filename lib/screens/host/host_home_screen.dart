@@ -6,6 +6,7 @@ import 'package:car_listing_app/widgets/host_car_card.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geocoding/geocoding.dart';
 
 class HostHomeScreen extends StatefulWidget {
   const HostHomeScreen({super.key});
@@ -51,6 +52,18 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
     super.initState();
     _loadCars();
   }
+  Future<String> _getaddressFromLatLng(double latitude, double longitude) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isNotEmpty) {
+        final Placemark place = placemarks.first;
+        return '${place.locality}, ${place.country}';
+      }
+    } catch (e) {
+      print('Error in reverse geocoding: $e');
+    }
+    return 'Unknown location';
+  }
 
   Future<void> _loadCars() async {
     final User? currentUser = _auth.currentUser;
@@ -90,6 +103,14 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
           latitude = (location['latitude'] as num?)?.toDouble();
           longitude = (location['longitude'] as num?)?.toDouble();
         }
+
+        String address = 'Unknown location';
+        if (latitude != null && longitude != null) {
+          _getaddressFromLatLng(latitude, longitude).then((addr) {
+            address = addr;
+            print('Resolved address: $address');
+          });
+        }
         
         // Get rent per day
         double rentPerDay = 0.0;
@@ -123,6 +144,7 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
           badges: [], // Default empty
           latitude: latitude,
           longitude: longitude,
+          street_address: address,
         );
       }).toList();
 
@@ -308,6 +330,7 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
                                             badges: [],
                                             latitude: updatedData['location']?['latitude'],
                                             longitude: updatedData['location']?['longitude'],
+                                            street_address: updatedData['street_address'] ?? 'Unknown location',
                                           );
 
                                           });

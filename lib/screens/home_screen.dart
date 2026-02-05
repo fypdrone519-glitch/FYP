@@ -1,5 +1,6 @@
 import 'package:car_listing_app/screens/notifications_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import '../models/car.dart';
 import '../models/car_filter_model.dart';
 import '../theme/app_colors.dart';
@@ -30,6 +31,18 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     super.initState();
     _loadCars();
   }
+  Future<String> _getaddressFromLatLng(double latitude, double longitude) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isNotEmpty) {
+        final Placemark place = placemarks.first;
+        return '${place.locality}, ${place.country}';
+      }
+    } catch (e) {
+      print('Error in reverse geocoding: $e');
+    }
+    return 'Unknown location';
+  }
 
   Future<void> _loadCars() async {
     try {
@@ -53,6 +66,14 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
           final location = data['location'] as Map<String, dynamic>;
           latitude = (location['latitude'] as num?)?.toDouble();
           longitude = (location['longitude'] as num?)?.toDouble();
+        }
+
+          String address = 'Unknown location';
+        if (latitude != null && longitude != null) {
+          _getaddressFromLatLng(latitude, longitude).then((addr) {
+            address = addr;
+            print('Resolved address: $address');
+          });
         }
         
         // Get rent per day
@@ -90,6 +111,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
           badges: [], // Default empty
           latitude: latitude,
           longitude: longitude,
+          street_address: address,
           drivingOptions: drivingOptions,
           transmissionType: transmissionType,
           fuelType: fuelType,
