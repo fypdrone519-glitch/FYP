@@ -10,7 +10,7 @@ import {BookingData} from './types';
 export const sendBookingReminders = functions.pubsub
   .schedule('every 60 minutes')
   .onRun(async (context) => {
-    console.log('⏰ Running booking reminders scheduler...');
+    //console.log('⏰ Running booking reminders scheduler...');
 
     try {
       // Get current date at midnight
@@ -18,7 +18,7 @@ export const sendBookingReminders = functions.pubsub
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
       const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
-      console.log(`📅 Checking bookings for ${todayStart.toISOString().split('T')[0]}`);
+      //console.log(`📅 Checking bookings for ${todayStart.toISOString().split('T')[0]}`);
 
       // Query bookings that start today and are approved and not cancelled
       const bookingsSnapshot = await admin.firestore()
@@ -33,7 +33,7 @@ export const sendBookingReminders = functions.pubsub
         return;
       }
 
-      console.log(`📬 Found ${bookingsSnapshot.docs.length} bookings starting today`);
+      //console.log(`📬 Found ${bookingsSnapshot.docs.length} bookings starting today`);
 
       const promises: Promise<void>[] = [];
 
@@ -43,14 +43,14 @@ export const sendBookingReminders = functions.pubsub
 
         // Skip cancelled bookings
         if (bookingData.cancelled_at) {
-          console.log(`⏭️ Skipping cancelled booking ${bookingId}`);
+          //console.log(`⏭️ Skipping cancelled booking ${bookingId}`);
           continue;
         }
 
         const {renter_id: renterId, owner_id: ownerId} = bookingData;
 
         if (!renterId || !ownerId) {
-          console.error(`❌ Missing renter_id or owner_id for booking ${bookingId}`);
+          //console.error(`❌ Missing renter_id or owner_id for booking ${bookingId}`);
           continue;
         }
 
@@ -62,7 +62,7 @@ export const sendBookingReminders = functions.pubsub
             type: 'booking_reminder',
             relatedId: bookingId,
           }).then(() => {
-            console.log(`✅ Reminder sent to renter ${renterId} for booking ${bookingId}`);
+            //console.log(`✅ Reminder sent to renter ${renterId} for booking ${bookingId}`);
           }).catch((error) => {
             console.error(`❌ Failed to send reminder to renter ${renterId}:`, error);
           })
@@ -76,7 +76,7 @@ export const sendBookingReminders = functions.pubsub
             type: 'booking_reminder',
             relatedId: bookingId,
           }).then(() => {
-            console.log(`✅ Reminder sent to owner ${ownerId} for booking ${bookingId}`);
+            //console.log(`✅ Reminder sent to owner ${ownerId} for booking ${bookingId}`);
           }).catch((error) => {
             console.error(`❌ Failed to send reminder to owner ${ownerId}:`, error);
           })
@@ -86,7 +86,7 @@ export const sendBookingReminders = functions.pubsub
       // Wait for all notifications to be sent
       await Promise.all(promises);
 
-      console.log(`✅ Booking reminders completed. Sent ${promises.length} notifications.`);
+      //console.log(`✅ Booking reminders completed. Sent ${promises.length} notifications.`);
     } catch (error) {
       console.error('❌ Error in sendBookingReminders:', error);
     }

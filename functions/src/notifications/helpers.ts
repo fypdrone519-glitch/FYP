@@ -11,13 +11,13 @@ export async function sendPushNotification(
   payload: NotificationPayload
 ): Promise<void> {
   try {
-    console.log(`📤 Sending notification to user ${userId}:`, payload);
+    //console.log(`📤 Sending notification to user ${userId}:`, payload);
 
     // Get user's FCM tokens
     const tokens = await getUserFcmTokens(userId);
 
     if (tokens.length === 0) {
-      console.log(`⚠️ No FCM tokens found for user ${userId}`);
+      //console.log(`⚠️ No FCM tokens found for user ${userId}`);
       // Still store the notification in Firestore
       await storeNotificationInFirestore(userId, payload);
       return;
@@ -54,7 +54,7 @@ export async function sendPushNotification(
     // Send notification
     const response = await admin.messaging().sendEachForMulticast(message);
 
-    console.log(`✅ Successfully sent ${response.successCount} messages`);
+    //  console.log(`✅ Successfully sent ${response.successCount} messages`);
 
     // Handle failed tokens
     if (response.failureCount > 0) {
@@ -98,7 +98,7 @@ export async function getUserFcmTokens(userId: string): Promise<string[]> {
       .get();
 
     if (!userDoc.exists) {
-      console.log(`⚠️ User document not found: ${userId}`);
+      //console.log(`⚠️ User document not found: ${userId}`);
       return [];
     }
 
@@ -133,7 +133,7 @@ export async function storeNotificationInFirestore(
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-    console.log(`✅ Notification stored in Firestore for user ${userId}`);
+    //  console.log(`✅ Notification stored in Firestore for user ${userId}`);
   } catch (error) {
     console.error(`❌ Error storing notification for ${userId}:`, error);
     throw error;
@@ -157,7 +157,7 @@ export async function cleanInvalidTokens(
         fcmTokens: admin.firestore.FieldValue.arrayRemove(...invalidTokens),
       });
 
-    console.log(`🧹 Removed ${invalidTokens.length} invalid tokens for user ${userId}`);
+    //console.log(`🧹 Removed ${invalidTokens.length} invalid tokens for user ${userId}`);
   } catch (error) {
     console.error(`❌ Error cleaning invalid tokens for ${userId}:`, error);
   }

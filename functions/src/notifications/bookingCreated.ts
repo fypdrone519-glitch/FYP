@@ -13,12 +13,12 @@ export const onBookingCreated = functions.firestore
     const bookingId = context.params.bookingId;
     const bookingData = snapshot.data() as BookingData;
 
-    console.log(`📅 New booking created: ${bookingId}`);
+    //console.log(`📅 New booking created: ${bookingId}`);
 
     try {
       const ownerId = bookingData.owner_id;
       if (!ownerId) {
-        console.error('❌ No owner_id found in booking');
+       ///console.error('❌ No owner_id found in booking');
         return;
       }
 
@@ -39,7 +39,7 @@ export const onBookingCreated = functions.firestore
             vehicleName = `${make} ${carName} ${model}`.trim() || 'your vehicle';
           }
         } catch (error) {
-          console.error('❌ Error fetching vehicle details:', error);
+          //console.error('❌ Error fetching vehicle details:', error);
         }
       }
 
@@ -51,7 +51,7 @@ export const onBookingCreated = functions.firestore
         relatedId: bookingId,
       });
 
-      console.log(`✅ Notification sent to owner ${ownerId}`);
+      //console.log(`✅ Notification sent to owner ${ownerId}`);
     } catch (error) {
       console.error('❌ Error in onBookingCreated:', error);
     }

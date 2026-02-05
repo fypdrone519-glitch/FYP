@@ -19,7 +19,7 @@ class PresenceService {
         'lastUpdated': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
       
-      print('✅ Presence set: User $userId active in chat $chatRoomId');
+      //print('✅ Presence set: User $userId active in chat $chatRoomId');
     } catch (e) {
       print('❌ Error setting presence: $e');
     }
@@ -37,7 +37,7 @@ class PresenceService {
         'lastUpdated': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
       
-      print('✅ Presence cleared: User $userId no longer in chat');
+      //print('✅ Presence cleared: User $userId no longer in chat');
     } catch (e) {
       print('❌ Error clearing presence: $e');
     }

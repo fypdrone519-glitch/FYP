@@ -11,10 +11,10 @@ import '../screens/chat_detail_screen.dart';
 /// Background message handler - must be top-level function
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('🔔 Background message: ${message.messageId}');
-  print('📩 Title: ${message.notification?.title}');
-  print('📩 Body: ${message.notification?.body}');
-  print('📩 Data: ${message.data}');
+  // print('🔔 Background message: ${message.messageId}');
+  // print('📩 Title: ${message.notification?.title}');
+  // print('📩 Body: ${message.notification?.body}');
+  // print('📩 Data: ${message.data}');
 }
 
 class NotificationService {
@@ -38,7 +38,7 @@ class NotificationService {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    print('🔔 Initializing NotificationService...');
+    //print('🔔 Initializing NotificationService...');
 
     // Set up background message handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -54,7 +54,7 @@ class NotificationService {
 
     // Listen to token refresh
     _fcm.onTokenRefresh.listen((token) {
-      print('🔄 FCM token refreshed: $token');
+      //print('🔄 FCM token refreshed: $token');
       _saveFcmToken(token);
     });
 
@@ -67,12 +67,12 @@ class NotificationService {
     // Handle notification tap when app was terminated
     final initialMessage = await _fcm.getInitialMessage();
     if (initialMessage != null) {
-      print('🚀 App opened from terminated state via notification');
+     //print('🚀 App opened from terminated state via notification');
       _handleNotificationTap(initialMessage);
     }
 
     _initialized = true;
-    print('✅ NotificationService initialized');
+    //print('✅ NotificationService initialized');
   }
 
   /// Initialize local notifications for foreground display
@@ -121,7 +121,7 @@ class NotificationService {
       provisional: false,
     );
 
-    print('📱 Notification permission status: ${settings.authorizationStatus}');
+    //print('📱 Notification permission status: ${settings.authorizationStatus}');
   }
 
   /// Get FCM token and save to Firestore via Cloud Function
@@ -133,21 +133,21 @@ class NotificationService {
         
         // If APNs token is not available, wait and retry
         if (apnsToken == null) {
-          print('⏳ Waiting for APNs token...');
+          //print('⏳ Waiting for APNs token...');
           // Wait a bit for APNs token to be available
           await Future.delayed(const Duration(seconds: 3));
           apnsToken = await _fcm.getAPNSToken();
           
           if (apnsToken == null) {
-            print('⚠️ APNs token still not available, will retry on token refresh');
+            //print('⚠️ APNs token still not available, will retry on token refresh');
             // Set up a delayed retry
             Future.delayed(const Duration(seconds: 10), () async {
               final retryApns = await _fcm.getAPNSToken();
               if (retryApns != null) {
-                print('✅ APNs token now available, getting FCM token');
+               // print('✅ APNs token now available, getting FCM token');
                 final token = await _fcm.getToken();
                 if (token != null) {
-                  print('📱 FCM Token (retry): $token');
+                  //print('📱 FCM Token (retry): $token');
                   await _saveFcmToken(token);
                 }
               }
@@ -155,16 +155,16 @@ class NotificationService {
             return;
           }
         }
-        print('✅ APNs token available: ${apnsToken.substring(0, 20)}...');
+        //print('✅ APNs token available: ${apnsToken.substring(0, 20)}...');
       }
       
       final token = await _fcm.getToken();
       if (token != null) {
-        print('📱 FCM Token: $token');
+        //print('📱 FCM Token: $token');
         await _saveFcmToken(token);
       }
     } catch (e) {
-      print('❌ Error getting FCM token: $e');
+      //print('❌ Error getting FCM token: $e');
     }
   }
 
@@ -172,7 +172,7 @@ class NotificationService {
   Future<void> _saveFcmToken(String token) async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
-      print('⚠️ No user logged in, cannot save FCM token');
+      //print('⚠️ No user logged in, cannot save FCM token');
       return;
     }
 
@@ -183,18 +183,18 @@ class NotificationService {
         'fcmTokens': FieldValue.arrayUnion([token]),
       }, SetOptions(merge: true));
 
-      print('✅ FCM token saved for user: $userId');
+      //print('✅ FCM token saved for user: $userId');
     } catch (e) {
-      print('❌ Error saving FCM token: $e');
+      //print('❌ Error saving FCM token: $e');
     }
   }
 
   /// Handle foreground messages - show local notification
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    print('🔔 Foreground message received');
-    print('📩 Title: ${message.notification?.title}');
-    print('📩 Body: ${message.notification?.body}');
-    print('📩 Data: ${message.data}');
+    // print('🔔 Foreground message received');
+    // print('📩 Title: ${message.notification?.title}');
+    // print('📩 Body: ${message.notification?.body}');
+    // print('📩 Data: ${message.data}');
 
     // Show local notification
     await _showLocalNotification(message);
@@ -237,13 +237,13 @@ class NotificationService {
 
   /// Handle notification tap from background/terminated state
   void _handleNotificationTap(RemoteMessage message) {
-    print('👆 Notification tapped: ${message.data}');
+    //print('👆 Notification tapped: ${message.data}');
     _navigateFromNotification(message.data);
   }
 
   /// Handle local notification tap
   void _onLocalNotificationTap(NotificationResponse response) {
-    print('👆 Local notification tapped: ${response.payload}');
+    //print('👆 Local notification tapped: ${response.payload}');
     // Parse payload and navigate
     // For now, we'll rely on FCM data payload
   }
@@ -254,7 +254,7 @@ class NotificationService {
     final relatedId = data['relatedId'] as String?;
 
     if (navigatorKey == null || relatedId == null) {
-      print('⚠️ Cannot navigate: navigatorKey or relatedId is null');
+      //print('⚠️ Cannot navigate: navigatorKey or relatedId is null');
       return;
     }
 
@@ -302,7 +302,7 @@ class NotificationService {
         break;
 
       default:
-        print('⚠️ Unknown notification type: $type');
+       // print('⚠️ Unknown notification type: $type');
     }
   }
 
@@ -327,7 +327,7 @@ class NotificationService {
         ),
       );
     } catch (e) {
-      print('❌ Error navigating to chat: $e');
+      //print('❌ Error navigating to chat: $e');
     }
   }
 
@@ -380,7 +380,7 @@ class NotificationService {
           .doc(notificationId)
           .update({'isRead': true});
 
-      print('✅ Notification marked as read: $notificationId');
+      //print('✅ Notification marked as read: $notificationId');
     } catch (e) {
       print('❌ Error marking notification as read: $e');
     }
@@ -405,9 +405,9 @@ class NotificationService {
       }
 
       await batch.commit();
-      print('✅ All notifications marked as read');
+      //print('✅ All notifications marked as read');
     } catch (e) {
-      print('❌ Error marking all notifications as read: $e');
+      //print('❌ Error marking all notifications as read: $e');
     }
   }
 
@@ -424,9 +424,9 @@ class NotificationService {
           .doc(notificationId)
           .delete();
 
-      print('✅ Notification deleted: $notificationId');
+      //print('✅ Notification deleted: $notificationId');
     } catch (e) {
-      print('❌ Error deleting notification: $e');
+      //print('❌ Error deleting notification: $e');
     }
   }
 }

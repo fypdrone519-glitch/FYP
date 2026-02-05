@@ -68,15 +68,15 @@ class _InboxScreenState extends State<InboxScreen> {
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          print('====== INBOX LOADING ======');
+          // print('====== INBOX LOADING ======');
           return const Center(child: CircularProgressIndicator());
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          print('====== INBOX EMPTY ======');
-          print('Has data: ${snapshot.hasData}');
-          print('Data: ${snapshot.data}');
-          print('========================');
+          // print('====== INBOX EMPTY ======');
+          // print('Has data: ${snapshot.hasData}');
+          // print('Data: ${snapshot.data}');
+          // print('========================');
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -103,17 +103,17 @@ class _InboxScreenState extends State<InboxScreen> {
           );
         }
 
-        print('====== INBOX DATA ======');
-        print('Chat rooms count: ${snapshot.data!.length}');
-        print('Chat room IDs: ${snapshot.data}');
-        print('=======================');
+        // print('====== INBOX DATA ======');
+        // print('Chat rooms count: ${snapshot.data!.length}');
+        // print('Chat room IDs: ${snapshot.data}');
+        // print('=======================');
 
         return ListView.builder(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
           itemCount: snapshot.data!.length,
           itemBuilder: (context, index) {
             final chatRoomId = snapshot.data![index];
-            print('Building conversation item for: $chatRoomId');
+            // print('Building conversation item for: $chatRoomId');
 
             return _buildConversationItem(chatRoomId);
           },
@@ -135,14 +135,14 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   Widget _buildConversationItem(String chatRoomId) {
-    print('_buildConversationItem called for: $chatRoomId');
+    // print('_buildConversationItem called for: $chatRoomId');
     final currentUserId = _auth.currentUser!.uid;
-    print('Current user ID: $currentUserId');
+    // print('Current user ID: $currentUserId');
 
     final otherUserId = chatRoomId
         .split('_')
         .firstWhere((id) => id != currentUserId);
-    print('Other user ID: $otherUserId');
+    //print('Other user ID: $otherUserId');
 
     return StreamBuilder<QuerySnapshot>(
       stream:
@@ -306,8 +306,8 @@ class _InboxScreenState extends State<InboxScreen> {
 
   Stream<List<String>> _getChatRoomsStream() {
     final currentUserId = _auth.currentUser!.uid;
-    print('====== GET CHAT ROOMS STREAM ======');
-    print('Current user ID: $currentUserId');
+    // print('====== GET CHAT ROOMS STREAM ======');
+    // print('Current user ID: $currentUserId');
 
     return _firestore
         .collection('Chat_rooms')
@@ -315,14 +315,14 @@ class _InboxScreenState extends State<InboxScreen> {
         .orderBy('lastMessageTime', descending: true) // Sort by most recent message
         .snapshots()
         .map((snapshot) {
-          print('Chat_rooms snapshot received');
-          print('Total chat rooms for user: ${snapshot.docs.length}');
+          // print('Chat_rooms snapshot received');
+          // print('Total chat rooms for user: ${snapshot.docs.length}');
 
           // Return the chat room IDs (already sorted by lastMessageTime)
           final chatRoomIds = snapshot.docs.map((doc) => doc.id).toList();
 
-          print('Chat room IDs (sorted): $chatRoomIds');
-          print('==================================');
+          // print('Chat room IDs (sorted): $chatRoomIds');
+          // print('==================================');
           return chatRoomIds;
         });
   }

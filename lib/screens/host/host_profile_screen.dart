@@ -1,5 +1,4 @@
 import 'package:car_listing_app/screens/auth/login_screen.dart';
-import 'package:car_listing_app/screens/host_navigation.dart';
 import 'package:car_listing_app/screens/main_navigation.dart';
 import 'package:car_listing_app/services/unread_message_service.dart';
 import 'package:car_listing_app/theme/app_colors.dart';

@@ -13,7 +13,7 @@ export const onBookingUpdated = functions.firestore
     const beforeData = change.before.data() as BookingData;
     const afterData = change.after.data() as BookingData;
 
-    console.log(`📝 Booking updated: ${bookingId}`);
+    //console.log(`📝 Booking updated: ${bookingId}`);
 
     try {
       const renterId = afterData.renter_id;
@@ -24,7 +24,7 @@ export const onBookingUpdated = functions.firestore
 
       // Check if booking was approved
       if (!beforeData.approved_at && afterData.approved_at) {
-        console.log('✅ Booking approved, notifying renter');
+        //console.log('✅ Booking approved, notifying renter');
         
         await sendPushNotification(renterId, {
           title: 'Booking Approved!',
@@ -42,7 +42,7 @@ export const onBookingUpdated = functions.firestore
         const status = afterData.status?.toUpperCase();
         
         if (status === 'REJECTED') {
-          console.log('❌ Booking rejected, notifying renter');
+          //console.log('❌ Booking rejected, notifying renter');
           
           await sendPushNotification(renterId, {
             title: 'Booking Rejected',
@@ -51,7 +51,7 @@ export const onBookingUpdated = functions.firestore
             relatedId: bookingId,
           });
         } else if (status === 'CANCELLED') {
-          console.log('🚫 Booking cancelled, notifying renter');
+          //console.log('🚫 Booking cancelled, notifying renter');
           
           await sendPushNotification(renterId, {
             title: 'Booking Cancelled',

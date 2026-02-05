@@ -16,17 +16,17 @@ class TripMonitoringService {
   /// Start monitoring user's bookings for approved trips
   void startMonitoring() {
     if (_isMonitoring) {
-      print('Trip monitoring already started');
+      //print('Trip monitoring already started');
       return;
     }
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      print('No user logged in');
+      //print('No user logged in');
       return;
     }
 
-    print('Starting trip monitoring for user: ${user.uid}');
+    //print('Starting trip monitoring for user: ${user.uid}');
 
     // Listen to all bookings where user is the renter
     _bookingsSubscription = FirebaseFirestore.instance
@@ -57,7 +57,7 @@ class TripMonitoringService {
         if (now.isAfter(startTime) && now.isBefore(endTime)) {
           hasActiveTrip = true;
           activeBookingId = doc.id;
-          print('Active trip found: ${doc.id}');
+          //print('Active trip found: ${doc.id}');
           break;
         }
       }
@@ -66,13 +66,13 @@ class TripMonitoringService {
     // Start or stop location tracking based on active trip status
     if (hasActiveTrip) {
       if (!_locationService.isTracking) {
-        print('Starting location tracking for active trip');
+        //print('Starting location tracking for active trip');
         _locationService.startLocationTracking();
         _activeBookingId = activeBookingId;
       }
     } else {
       if (_locationService.isTracking) {
-        print('No active trip, stopping location tracking');
+        //print('No active trip, stopping location tracking');
         _locationService.stopLocationTracking();
         _activeBookingId = null;
       }
@@ -88,7 +88,7 @@ class TripMonitoringService {
     _locationService.stopLocationTracking();
     _isMonitoring = false;
     _activeBookingId = null;
-    print('Trip monitoring stopped');
+    //print('Trip monitoring stopped');
   }
 
   /// Check if currently monitoring

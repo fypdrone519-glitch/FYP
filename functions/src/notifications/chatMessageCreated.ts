@@ -15,7 +15,7 @@ export const onChatMessageCreated = functions.firestore
     //const messageId = context.params.messageId;
     const messageData = snapshot.data() as MessageData;
 
-    console.log(`💬 New message in chat room: ${chatRoomId}`);
+    //console.log(`💬 New message in chat room: ${chatRoomId}`);
 
     try {
       const {senderId, receiverId, message} = messageData;
@@ -58,11 +58,11 @@ export const onChatMessageCreated = functions.firestore
       if (shouldSendPush) {
         // Send push notification
         await sendPushNotification(receiverId, notificationPayload);
-        console.log(`✅ Push notification sent to receiver ${receiverId}`);
+        //console.log(`✅ Push notification sent to receiver ${receiverId}`);
       } else {
         // Still store in Firestore for notification center
         await storeNotificationInFirestore(receiverId, notificationPayload);
-        console.log(`✅ Notification stored in Firestore (no push sent)`);
+        //console.log(`✅ Notification stored in Firestore (no push sent)`);
       }
     } catch (error) {
       console.error('❌ Error in onChatMessageCreated:', error);

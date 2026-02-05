@@ -6,7 +6,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geocoding/geocoding.dart';
 
 class MapsScreen extends StatefulWidget {
   const MapsScreen({super.key});
@@ -25,6 +25,18 @@ class _MapsScreenState extends State<MapsScreen> {
   void initState() {
     super.initState();
     _loadCars();
+  }
+  Future<String> _getaddressFromLatLng(double latitude, double longitude) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isNotEmpty) {
+        final Placemark place = placemarks.first;
+        return '${place.locality}, ${place.country}';
+      }
+    } catch (e) {
+      print('Error in reverse geocoding: $e');
+    }
+    return 'Unknown location';
   }
 
   Future<void> _loadCars() async {
@@ -54,6 +66,14 @@ class _MapsScreenState extends State<MapsScreen> {
           final location = data['location'] as Map<String, dynamic>;
           latitude = (location['latitude'] as num?)?.toDouble();
           longitude = (location['longitude'] as num?)?.toDouble();
+        }
+
+        String address = 'Unknown location';
+        if (latitude != null && longitude != null) {
+          _getaddressFromLatLng(latitude, longitude).then((addr) {
+            address = addr;
+            print('Resolved address: $address');
+          });
         }
         
         // Get rent per day

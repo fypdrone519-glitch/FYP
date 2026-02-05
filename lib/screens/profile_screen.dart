@@ -30,12 +30,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (doc.exists) {
       setState(() {
         verificationStatus = doc.data()?['verification_status'] ?? "unverified";
-        print(verificationStatus);
+        //print(verificationStatus);
       });
     }
   }
   Future<void> loadname() async {
-    print("loading name");
+    //print("loading name");
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
@@ -46,7 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         // Assuming the document has a field 'name'
         name = doc.data()?['name'] ?? "No Name";
-        print(name);
+        //print(name);
       });
     }
   }

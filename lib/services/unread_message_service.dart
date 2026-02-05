@@ -46,7 +46,7 @@ class UnreadMessageService {
       return;
     }
 
-    debugPrint('[UnreadMessageService] Starting listener for user: $currentUserId');
+    //debugPrint('[UnreadMessageService] Starting listener for user: $currentUserId');
 
     // Listen to all chat rooms where current user is a participant
     _chatRoomsSubscription = _firestore
@@ -55,7 +55,7 @@ class UnreadMessageService {
         .snapshots()
         .listen(
       (snapshot) {
-        debugPrint('[UnreadMessageService] Chat rooms snapshot received: ${snapshot.docs.length} rooms');
+        //debugPrint('[UnreadMessageService] Chat rooms snapshot received: ${snapshot.docs.length} rooms');
 
         // Cancel old message subscriptions for rooms that no longer exist
         final currentRoomIds = snapshot.docs.map((doc) => doc.id).toSet();
@@ -97,7 +97,7 @@ class UnreadMessageService {
       return;
     }
 
-    debugPrint('[UnreadMessageService] Setting up listener for room: $chatRoomId');
+    //debugPrint('[UnreadMessageService] Setting up listener for room: $chatRoomId');
 
     // Listen ONLY to unread messages where current user is the receiver
     _messageSubscriptions[chatRoomId] = _firestore
@@ -110,7 +110,7 @@ class UnreadMessageService {
         .snapshots()
         .listen(
       (snapshot) {
-        debugPrint('[UnreadMessageService] Room $chatRoomId: ${snapshot.docs.length} unread messages');
+        //debugPrint('[UnreadMessageService] Room $chatRoomId: ${snapshot.docs.length} unread messages');
 
         // If ANY unread message exists in ANY room, set to true
         if (snapshot.docs.isNotEmpty) {
@@ -154,13 +154,13 @@ class UnreadMessageService {
     }
 
     hasUnreadMessages.value = foundUnread;
-    debugPrint('[UnreadMessageService] Recheck complete: hasUnread = $foundUnread');
+    //debugPrint('[UnreadMessageService] Recheck complete: hasUnread = $foundUnread');
   }
 
   /// Stops all listeners and cleans up resources.
   /// MUST be called when user logs out to prevent memory leaks.
   void stopListening() {
-    debugPrint('[UnreadMessageService] Stopping all listeners');
+    //debugPrint('[UnreadMessageService] Stopping all listeners');
     
     _chatRoomsSubscription?.cancel();
     _chatRoomsSubscription = null;
