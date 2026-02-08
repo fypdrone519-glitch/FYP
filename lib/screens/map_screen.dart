@@ -43,7 +43,7 @@ class _MapsScreenState extends State<MapsScreen> {
         return '${place.locality}, ${place.country}';
       }
     } catch (e) {
-      print('Error in reverse geocoding: $e');
+      // print('Error in reverse geocoding: $e');
     }
     return 'Unknown location';
   }
@@ -81,7 +81,7 @@ class _MapsScreenState extends State<MapsScreen> {
             String address = 'Unknown location';
             if (latitude != null && longitude != null) {
               address = await _getaddressFromLatLng(latitude, longitude);
-              print('Resolved address for ${data['car_name']}: $address');
+              // print('Resolved address for ${data['car_name']}: $address');
             }
 
             // Get rent per day

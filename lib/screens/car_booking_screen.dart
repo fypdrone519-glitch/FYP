@@ -610,6 +610,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 }
 
 Future<void> _showDatePickerDialog(String label, DateTime? currentDate, bool isPickup) async {
+  print("Current date ${currentDate}");
   // Use availability range if available, otherwise use default range
   final DateTime baseFirstDay = _earliestAvailableDate ?? _normalizeDate(DateTime.now());
   final DateTime baseLastDay = _latestAvailableDate ?? DateTime.now().add(const Duration(days: 365));
@@ -620,14 +621,17 @@ Future<void> _showDatePickerDialog(String label, DateTime? currentDate, bool isP
   final DateTime lastDay = baseLastDay;
   
   // Ensure focusedDay is at least equal to firstDay
-  DateTime focusedDay;
+ DateTime focusedDay;
   if (currentDate != null) {
+    // If date is already selected, show that month
     final normalizedCurrent = _normalizeDate(currentDate);
     focusedDay = normalizedCurrent.isBefore(firstDay) ? firstDay : normalizedCurrent;
   } else {
-    focusedDay = firstDay;
+    // ✅ If no date selected, show current month (today's date)
+    final today = _normalizeDate(DateTime.now());
+    // Make sure today is not before firstDay
+    focusedDay = today.isBefore(firstDay) ? firstDay : today;
   }
-  
   DateTime? selectedDateInDialog = currentDate != null ? _normalizeDate(currentDate) : null;
   
   await showDialog(
@@ -917,28 +921,28 @@ bool _isSameDate(DateTime? date1, DateTime? date2) {
   return _normalizeDate(date1) == _normalizeDate(date2);
 }
 
-  Widget _buildLocationField() {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.location_on_outlined, color: Colors.grey),
-          const SizedBox(width: AppSpacing.xs),
-          Expanded(
-            child: Text(
-              widget.vehicleData['street_address'],
-              style: AppTextStyles.body(context),
-            ),
+Widget _buildLocationField() {
+  return Container(
+    padding: const EdgeInsets.all(AppSpacing.sm),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.grey[300]!),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.location_on_outlined, color: Colors.grey),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Text(
+            widget.vehicleData['street_address'],
+            style: AppTextStyles.body(context),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
 Widget _buildPayButton() {
   // Refresh verification status

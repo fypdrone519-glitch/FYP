@@ -37,19 +37,20 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     TripMonitoringService().startMonitoring();
-    
+
     // Set navigator key for notification navigation
     NotificationService.navigatorKey = _navigatorKey;
   }
 
-   @override
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     // Stop monitoring when app is closed
     TripMonitoringService().stopMonitoring();
     super.dispose();
   }
-    @override
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Handle app lifecycle changes
     if (state == AppLifecycleState.resumed) {
@@ -57,6 +58,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       TripMonitoringService().startMonitoring();
     }
   }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'CarShare - Car Listing App',

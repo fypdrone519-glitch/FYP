@@ -4,6 +4,7 @@ import 'package:car_listing_app/services/unread_message_service.dart';
 import 'package:car_listing_app/theme/app_colors.dart';
 import 'package:car_listing_app/theme/app_spacing.dart';
 import 'package:car_listing_app/theme/app_text_styles.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -15,6 +16,7 @@ class HostProfileScreen extends StatefulWidget {
 }
 
 class _HostProfileScreenState extends State<HostProfileScreen> {
+  String name = "loading";
   Future<void> _logout(BuildContext context) async {
   try {
     // CRITICAL: Stop unread message listeners before signing out
@@ -35,6 +37,28 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
     );
   }
 }
+  Future<void> loadname() async {
+    //print("loading name");
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+    if (doc.exists) {
+      setState(() {
+        // Assuming the document has a field 'name'
+        name = doc.data()?['name'] ?? "No Name";
+        //print(name);
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadname();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,9 +164,9 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.border,
-                  image: const DecorationImage(
+                  image: DecorationImage(
                     image: NetworkImage(
-                      'https://ui-avatars.com/api/?name=Fawad+Naveed&size=200&background=19B394&color=fff',
+                     'https://ui-avatars.com/api/?name=${name}&size=200&background=19B394&color=fff',
                     ),
                     fit: BoxFit.cover,
                   ),
@@ -153,7 +177,7 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
 
               // Name
               Text(
-                'Fawad Naveed',
+                name,
                 style: AppTextStyles.h1(context).copyWith(fontSize: 24),
               ),
 

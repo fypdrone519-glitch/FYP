@@ -8,3 +8,13 @@ export {onBookingCreated} from './notifications/bookingCreated';
 export {onBookingUpdated} from './notifications/bookingUpdated';
 export {onChatMessageCreated} from './notifications/chatMessageCreated';
 export {sendBookingReminders} from './notifications/bookingReminders';
+
+// Booking lifecycle functions
+export { confirmBookingStart } from './bookings/confirmBookingStart';
+export { confirmBookingEnd } from './bookings/confirmBookingEnd';
+export { confirmBookingCompletion } from './bookings/confirmBookingCompletion'; // NEW
+export { completeBooking } from './bookings/completeBooking'; // ADMIN ONLY
+export { getEvidenceStatus } from './bookings/getEvidenceStatus';
+// ... other exports
+// Export revenue functions
+export {getHostRevenue} from './revenue/getHostRevenue';

@@ -18,7 +18,7 @@ class HostHomeScreen extends StatefulWidget {
 class _HostHomeScreenState extends State<HostHomeScreen> {
   // Mock revenue data
   final double totalRevenue = 9852.02;
-  
+
   final List<RevenueCategory> revenueCategories = [
     RevenueCategory(
       name: 'Civic',
@@ -36,25 +36,33 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
       color: const Color(0xFFFFC857), // Yellow/Orange
     ),
   ];
-  
+
   List<Car> _cars = [];
   final List<Map<String, dynamic>> _vehicleDataList = [];
   bool _isLoading = true;
-  
+
   // Firebase instances
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  double get totalAmount => revenueCategories.fold(0.0, (sum, cat) => sum + cat.amount);
+  double get totalAmount =>
+      revenueCategories.fold(0.0, (sum, cat) => sum + cat.amount);
 
   @override
   void initState() {
     super.initState();
     _loadCars();
   }
-  Future<String> _getaddressFromLatLng(double latitude, double longitude) async {
+
+  Future<String> _getaddressFromLatLng(
+    double latitude,
+    double longitude,
+  ) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        latitude,
+        longitude,
+      );
       if (placemarks.isNotEmpty) {
         final Placemark place = placemarks.first;
         return '${place.locality}, ${place.country}';
@@ -75,78 +83,83 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
     }
 
     try {
-      final QuerySnapshot vehiclesSnapshot = await _firestore
-          .collection('vehicles')
-          .where('owner_id', isEqualTo: currentUser.uid)
-          .get();
-        _vehicleDataList.clear();
+      final QuerySnapshot vehiclesSnapshot =
+          await _firestore
+              .collection('vehicles')
+              .where('owner_id', isEqualTo: currentUser.uid)
+              .get();
+      _vehicleDataList.clear();
 
-      final List<Car> cars = vehiclesSnapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+      final List<Car> cars =
+          vehiclesSnapshot.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
 
-       _vehicleDataList.add({
-        'id': doc.id,
-        ...data, // Store complete data
-      });
-        
-        // Get features - take first 3
-        List<String> features = [];
-        if (data['features'] != null && data['features'] is List) {
-          features = List<String>.from(data['features']).take(3).toList();
-        }
-        
-        // Get location
-        double? latitude;
-        double? longitude;
-        if (data['location'] != null) {
-          final location = data['location'] as Map<String, dynamic>;
-          latitude = (location['latitude'] as num?)?.toDouble();
-          longitude = (location['longitude'] as num?)?.toDouble();
-        }
+            _vehicleDataList.add({
+              'id': doc.id,
+              ...data, // Store complete data
+            });
 
-        String address = 'Unknown location';
-        if (latitude != null && longitude != null) {
-          _getaddressFromLatLng(latitude, longitude).then((addr) {
-            address = addr;
-            print('Resolved address: $address');
-          });
-        }
-        
-        // Get rent per day
-        double rentPerDay = 0.0;
-        if (data['rent_per_day'] != null) {
-          rentPerDay = (data['rent_per_day'] as num).toDouble();
-        }
+            // Get features - take first 3
+            List<String> features = [];
+            if (data['features'] != null && data['features'] is List) {
+              features = List<String>.from(data['features']).take(3).toList();
+            }
 
-        // Get rent per day
-        double rentPerhour = 0.0;
-        if (data['rent_per_hour'] != null) {
-          rentPerhour = (data['rent_per_hour'] as num).toDouble();
-        }
+            // Get location
+            double? latitude;
+            double? longitude;
+            if (data['location'] != null) {
+              final location = data['location'] as Map<String, dynamic>;
+              latitude = (location['latitude'] as num?)?.toDouble();
+              longitude = (location['longitude'] as num?)?.toDouble();
+            }
 
-         // Get first image URL
-        String imageUrl = '';
-        if (data['images'] != null && data['images'] is List && data['images'].isNotEmpty) {
-          imageUrl = data['images'][0] as String;
-        }
+            String address = 'Unknown location';
+            if (latitude != null && longitude != null) {
+              _getaddressFromLatLng(latitude, longitude).then((addr) {
+                address = addr;
+                print('Resolved address: $address');
+              });
+            }
 
-        
-        return Car(
-          id: doc.id,
-          make: data['make'] ?? '',
-          model: data['car_name'] ?? '', // car_name is used as model so fullName will be "make car_name"
-          imageUrl: imageUrl, // Use the first image URL
-          rating: 0.0, // Default value
-          trips: 0, // Default value
-          pricePerDay: rentPerDay,
-          pricePerHour: rentPerhour,
-          features: features,
-          badges: [], // Default empty
-          latitude: latitude,
-          longitude: longitude,
-          street_address: address,
-        );
-      }).toList();
+            // Get rent per day
+            double rentPerDay = 0.0;
+            if (data['rent_per_day'] != null) {
+              rentPerDay = (data['rent_per_day'] as num).toDouble();
+            }
+
+            // Get rent per day
+            double rentPerhour = 0.0;
+            if (data['rent_per_hour'] != null) {
+              rentPerhour = (data['rent_per_hour'] as num).toDouble();
+            }
+
+            // Get first image URL
+            String imageUrl = '';
+            if (data['images'] != null &&
+                data['images'] is List &&
+                data['images'].isNotEmpty) {
+              imageUrl = data['images'][0] as String;
+            }
+
+            return Car(
+              id: doc.id,
+              make: data['make'] ?? '',
+              model:
+                  data['car_name'] ??
+                  '', // car_name is used as model so fullName will be "make car_name"
+              imageUrl: imageUrl, // Use the first image URL
+              rating: 0.0, // Default value
+              trips: 0, // Default value
+              pricePerDay: rentPerDay,
+              pricePerHour: rentPerhour,
+              features: features,
+              badges: [], // Default empty
+              latitude: latitude,
+              longitude: longitude,
+              street_address: address,
+            );
+          }).toList();
 
       setState(() {
         _cars = cars;
@@ -157,9 +170,9 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading cars: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading cars: $e')));
       }
     }
   }
@@ -179,12 +192,7 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Share Lane',
-                        style: AppTextStyles.h2(
-                          context,
-                        )
-                      ),
+                      Text('Share Lane', style: AppTextStyles.h2(context)),
                       GestureDetector(
                         onTap: () {
                           // Navigate to profile
@@ -214,9 +222,7 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Revenue Generated',
-                      style: AppTextStyles.h2(
-                        context,
-                      )
+                      style: AppTextStyles.h2(context),
                     ),
                   ),
                 ),
@@ -291,56 +297,75 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
 
                       // Scrollable Car Cards List
                       Expanded(
-                        child: _isLoading
-                            ? const Center(
-                                child: CircularProgressIndicator(),
-                              )
-                            : _cars.isEmpty
+                        child:
+                            _isLoading
                                 ? const Center(
-                                    child: Text('No vehicles found'),
-                                  )
+                                  child: CircularProgressIndicator(),
+                                )
+                                : _cars.isEmpty
+                                ? const Center(child: Text('No vehicles found'))
                                 : ListView.builder(
-                                    controller: scrollController,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.sm,
-                                    ),
-                                    itemCount: _cars.length,
-                                    itemBuilder: (context, index) {
-                                      return HostCarCard(
-                                        car: _cars[index],
-                                        vehicleData: _vehicleDataList[index],
-                                        onDataUpdated: (updatedData) {
-                                          setState(() {
-                                            updatedData['id'] = _cars[index].id;
-                                            _vehicleDataList[index] = updatedData;
-                                            _cars[index] = Car(
+                                  controller: scrollController,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.sm,
+                                  ),
+                                  itemCount: _cars.length,
+                                  itemBuilder: (context, index) {
+                                    return HostCarCard(
+                                      car: _cars[index],
+                                      vehicleData: _vehicleDataList[index],
+                                      onDataUpdated: (updatedData) {
+                                        setState(() {
+                                          updatedData['id'] = _cars[index].id;
+                                          _vehicleDataList[index] = updatedData;
+                                          _cars[index] = Car(
                                             id: updatedData['id'],
                                             make: updatedData['make'] ?? '',
-                                            model: updatedData['car_name'] ?? '',
-                                            imageUrl: updatedData['images'] != null && (updatedData['images'] as List).isNotEmpty
-                                                ? updatedData['images'][0] as String
-                                                : '', // set first image
+                                            model:
+                                                updatedData['car_name'] ?? '',
+                                            imageUrl:
+                                                updatedData['images'] != null &&
+                                                        (updatedData['images']
+                                                                as List)
+                                                            .isNotEmpty
+                                                    ? updatedData['images'][0]
+                                                        as String
+                                                    : '', // set first image
                                             rating: 0.0,
                                             trips: 0,
-                                            pricePerDay: (updatedData['rent_per_day'] as num?)?.toDouble() ?? 0.0,
-                                            pricePerHour: (updatedData['rent_per_hour'] as num?)?.toDouble() ?? 0.0,
-                                            features: updatedData['features'] != null 
-                                                ? List<String>.from(updatedData['features']).take(3).toList()
-                                                : [],
+                                            pricePerDay:
+                                                (updatedData['rent_per_day']
+                                                        as num?)
+                                                    ?.toDouble() ??
+                                                0.0,
+                                            pricePerHour:
+                                                (updatedData['rent_per_hour']
+                                                        as num?)
+                                                    ?.toDouble() ??
+                                                0.0,
+                                            features:
+                                                updatedData['features'] != null
+                                                    ? List<String>.from(
+                                                      updatedData['features'],
+                                                    ).take(3).toList()
+                                                    : [],
                                             badges: [],
-                                            latitude: updatedData['location']?['latitude'],
-                                            longitude: updatedData['location']?['longitude'],
-                                            street_address: updatedData['street_address'] ?? 'Unknown location',
+                                            latitude:
+                                                updatedData['location']?['latitude'],
+                                            longitude:
+                                                updatedData['location']?['longitude'],
+                                            street_address:
+                                                updatedData['street_address'] ??
+                                                'Unknown location',
                                           );
-
-                                          });
-                                        },
-                                        onTap: () {
-                                          _loadCars();
-                                        },
-                                      );
-                                    },
-                                  ),
+                                        });
+                                      },
+                                      onTap: () {
+                                        _loadCars();
+                                      },
+                                    );
+                                  },
+                                ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
                     ],
@@ -370,11 +395,11 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          
+
           // Progress Bar
           _buildProgressBar(context),
           const SizedBox(height: AppSpacing.md),
-          
+
           // Category List
           ...revenueCategories.map((category) {
             final percentage = (category.amount / totalAmount * 100);
@@ -389,33 +414,34 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
     );
   }
 
-Widget _buildProgressBar(BuildContext context) {
-  return SizedBox(
-    height: 22,
-    child: Row(
-      children: revenueCategories.asMap().entries.map((entry) {
-        final index = entry.key;
-        final category = entry.value;
-        final percentage = category.amount / totalAmount;
-        
-        return Expanded(
-          flex: (percentage * 100).round(),
-          child: Padding(
-            padding: EdgeInsets.only(
-              right: index < revenueCategories.length - 1 ? 2.0 : 0,
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(11),
-                color: category.color,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    ),
-  );
-}
+  Widget _buildProgressBar(BuildContext context) {
+    return SizedBox(
+      height: 22,
+      child: Row(
+        children:
+            revenueCategories.asMap().entries.map((entry) {
+              final index = entry.key;
+              final category = entry.value;
+              final percentage = category.amount / totalAmount;
+
+              return Expanded(
+                flex: (percentage * 100).round(),
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: index < revenueCategories.length - 1 ? 2.0 : 0,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(11),
+                      color: category.color,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+      ),
+    );
+  }
 
   Widget _buildCategoryItem(
     BuildContext context, {

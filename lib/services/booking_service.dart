@@ -9,9 +9,9 @@ class BookingService {
 
   /// Generates all dates between startDate and endDate (inclusive)
   /// Returns dates in yyyy-MM-dd format
-  /// 
+  ///
   /// Example:
-  /// generateDateRange('2026-02-01', '2026-02-03') 
+  /// generateDateRange('2026-02-01', '2026-02-03')
   /// → ['2026-02-01', '2026-02-02', '2026-02-03']
   List<String> generateDateRange(String startDateStr, String endDateStr) {
     final startDate = DateTime.parse(startDateStr);
@@ -36,17 +36,17 @@ class BookingService {
   }
 
   /// Atomically approves a booking and blocks the requested dates
-  /// 
+  ///
   /// This function uses a Firestore transaction to ensure:
   /// 1. All requested dates are available in the vehicle
   /// 2. If available, those dates are removed from availability
   /// 3. Booking status is updated to APPROVED
   /// 4. Everything happens atomically (no race conditions)
-  /// 
+  ///
   /// Returns:
   /// - true: Booking approved successfully
   /// - false: Booking failed (partial availability or concurrent conflict)
-  /// 
+  ///
   /// Throws:
   /// - Exception with meaningful error message on failure
   Future<bool> approveBookingWithAvailabilityBlock(String bookingId) async {
@@ -57,135 +57,136 @@ class BookingService {
 
     try {
       // Run atomic transaction
-      final result = await _firestore.runTransaction<bool>(
-        (transaction) async {
-          // Step 1: Read booking document
-          final bookingRef = _firestore.collection('bookings').doc(bookingId);
-          final bookingSnapshot = await transaction.get(bookingRef);
+      final result = await _firestore.runTransaction<bool>((transaction) async {
+        // Step 1: Read booking document
+        final bookingRef = _firestore.collection('bookings').doc(bookingId);
+        final bookingSnapshot = await transaction.get(bookingRef);
 
-          if (!bookingSnapshot.exists) {
-            throw Exception('Booking not found');
+        if (!bookingSnapshot.exists) {
+          throw Exception('Booking not found');
+        }
+
+        final bookingData = bookingSnapshot.data()!;
+
+        // Validate booking status
+        final currentStatus =
+            (bookingData['status'] as String?)?.trim().toLowerCase();
+        if (currentStatus == 'approved') {
+          throw Exception('Booking is already approved');
+        }
+        if (currentStatus == 'cancelled' || currentStatus == 'canceled') {
+          throw Exception('Cannot approve a cancelled booking');
+        }
+
+        // Extract vehicle ID and date range
+        final vehicleId = bookingData['vehicle_id'] as String?;
+        if (vehicleId == null || vehicleId.isEmpty) {
+          throw Exception('Booking does not have a valid vehicle ID');
+        }
+
+        // Get start and end dates
+        String startDateStr;
+        String endDateStr;
+
+        // Check if dates are stored as strings (yyyy-MM-dd) or Timestamps
+        if (bookingData['startDate'] is String) {
+          startDateStr = bookingData['startDate'] as String;
+          endDateStr = bookingData['endDate'] as String;
+        } else {
+          // Fallback: convert from Timestamp fields
+          final startTime = bookingData['start_time'] as Timestamp?;
+          final endTime = bookingData['end_time'] as Timestamp?;
+
+          if (startTime == null || endTime == null) {
+            throw Exception('Booking does not have valid dates');
           }
 
-          final bookingData = bookingSnapshot.data()!;
-          
-          // Validate booking status
-          final currentStatus = (bookingData['status'] as String?)?.trim().toLowerCase();
-          if (currentStatus == 'approved') {
-            throw Exception('Booking is already approved');
+          final startDate = startTime.toDate();
+          final endDate = endTime.toDate();
+          startDateStr = startDate.toIso8601String().split('T')[0];
+          endDateStr = endDate.toIso8601String().split('T')[0];
+        }
+
+        // Step 2: Generate all dates in the booking range
+        final requestedDates = generateDateRange(startDateStr, endDateStr);
+
+        //print('📅 Requested dates for booking $bookingId: $requestedDates');
+
+        // Step 3: Read vehicle document
+        final vehicleRef = _firestore.collection('vehicles').doc(vehicleId);
+        final vehicleSnapshot = await transaction.get(vehicleRef);
+
+        if (!vehicleSnapshot.exists) {
+          throw Exception('Vehicle not found');
+        }
+
+        final vehicleData = vehicleSnapshot.data()!;
+        final availabilityRaw = vehicleData['availability'];
+
+        // Handle availability as List<dynamic> from Firestore
+        final List<String> currentAvailability;
+        if (availabilityRaw is List) {
+          currentAvailability = availabilityRaw.cast<String>();
+        } else {
+          throw Exception('Vehicle does not have a valid availability array');
+        }
+
+        print('📋 Current vehicle availability: $currentAvailability');
+
+        // Step 4: Check if ALL requested dates are available
+        // requestedDates ⊆ currentAvailability
+        final unavailableDates = <String>[];
+        for (final date in requestedDates) {
+          if (!currentAvailability.contains(date)) {
+            unavailableDates.add(date);
           }
-          if (currentStatus == 'cancelled' || currentStatus == 'canceled') {
-            throw Exception('Cannot approve a cancelled booking');
-          }
+        }
 
-          // Extract vehicle ID and date range
-          final vehicleId = bookingData['vehicle_id'] as String?;
-          if (vehicleId == null || vehicleId.isEmpty) {
-            throw Exception('Booking does not have a valid vehicle ID');
-          }
+        if (unavailableDates.isNotEmpty) {
+          print('❌ Unavailable dates: $unavailableDates');
+          throw Exception(
+            'Cannot approve booking: Dates not available: ${unavailableDates.join(", ")}',
+          );
+        }
 
-          // Get start and end dates
-          String startDateStr;
-          String endDateStr;
+        // Step 5: Remove booked dates from availability
+        final updatedAvailability =
+            currentAvailability
+                .where((date) => !requestedDates.contains(date))
+                .toList();
 
-          // Check if dates are stored as strings (yyyy-MM-dd) or Timestamps
-          if (bookingData['startDate'] is String) {
-            startDateStr = bookingData['startDate'] as String;
-            endDateStr = bookingData['endDate'] as String;
-          } else {
-            // Fallback: convert from Timestamp fields
-            final startTime = bookingData['start_time'] as Timestamp?;
-            final endTime = bookingData['end_time'] as Timestamp?;
-            
-            if (startTime == null || endTime == null) {
-              throw Exception('Booking does not have valid dates');
-            }
+        // print('✅ All dates available. Removing from availability...');
+        // print('🔄 Updated availability: $updatedAvailability');
 
-            final startDate = startTime.toDate();
-            final endDate = endTime.toDate();
-            startDateStr = startDate.toIso8601String().split('T')[0];
-            endDateStr = endDate.toIso8601String().split('T')[0];
-          }
+        // Step 6: Update vehicle availability (atomically)
+        transaction.update(vehicleRef, {'availability': updatedAvailability});
 
-          // Step 2: Generate all dates in the booking range
-          final requestedDates = generateDateRange(startDateStr, endDateStr);
-          
-          print('📅 Requested dates for booking $bookingId: $requestedDates');
+        // Step 7: Update booking status to APPROVED (atomically)
+        transaction.update(bookingRef, {
+          'status': 'APPROVED',
+          'approved_at': FieldValue.serverTimestamp(),
+          'approved_by': currentUser.uid,
+        });
 
-          // Step 3: Read vehicle document
-          final vehicleRef = _firestore.collection('vehicles').doc(vehicleId);
-          final vehicleSnapshot = await transaction.get(vehicleRef);
-
-          if (!vehicleSnapshot.exists) {
-            throw Exception('Vehicle not found');
-          }
-
-          final vehicleData = vehicleSnapshot.data()!;
-          final availabilityRaw = vehicleData['availability'];
-          
-          // Handle availability as List<dynamic> from Firestore
-          final List<String> currentAvailability;
-          if (availabilityRaw is List) {
-            currentAvailability = availabilityRaw.cast<String>();
-          } else {
-            throw Exception('Vehicle does not have a valid availability array');
-          }
-
-          print('📋 Current vehicle availability: $currentAvailability');
-
-          // Step 4: Check if ALL requested dates are available
-          // requestedDates ⊆ currentAvailability
-          final unavailableDates = <String>[];
-          for (final date in requestedDates) {
-            if (!currentAvailability.contains(date)) {
-              unavailableDates.add(date);
-            }
-          }
-
-          if (unavailableDates.isNotEmpty) {
-            print('❌ Unavailable dates: $unavailableDates');
-            throw Exception(
-              'Cannot approve booking: Dates not available: ${unavailableDates.join(", ")}',
-            );
-          }
-
-          // Step 5: Remove booked dates from availability
-          final updatedAvailability = currentAvailability
-              .where((date) => !requestedDates.contains(date))
-              .toList();
-
-          print('✅ All dates available. Removing from availability...');
-          print('🔄 Updated availability: $updatedAvailability');
-
-          // Step 6: Update vehicle availability (atomically)
-          transaction.update(vehicleRef, {
-            'availability': updatedAvailability,
-          });
-
-          // Step 7: Update booking status to APPROVED (atomically)
-          transaction.update(bookingRef, {
-            'status': 'APPROVED',
-            'approved_at': FieldValue.serverTimestamp(),
-            'approved_by': currentUser.uid,
-          });
-
-          print('✅ Booking $bookingId approved successfully');
-          return true;
-        },
-        timeout: const Duration(seconds: 10),
-      );
+        //print('✅ Booking $bookingId approved successfully');
+        return true;
+      }, timeout: const Duration(seconds: 10));
 
       return result;
     } on FirebaseException catch (e) {
       print('❌ Firebase error during approval: ${e.code} - ${e.message}');
-      
+
       // Handle specific transaction errors
       if (e.code == 'aborted') {
-        throw Exception('Approval failed: Another operation is in progress. Please try again.');
+        throw Exception(
+          'Approval failed: Another operation is in progress. Please try again.',
+        );
       } else if (e.code == 'deadline-exceeded') {
-        throw Exception('Approval timeout: Please check your connection and try again.');
+        throw Exception(
+          'Approval timeout: Please check your connection and try again.',
+        );
       }
-      
+
       rethrow;
     } catch (e) {
       print('❌ Error during booking approval: $e');
@@ -194,7 +195,7 @@ class BookingService {
   }
 
   /// Rejects a booking without affecting vehicle availability
-  /// 
+  ///
   /// Returns true if successful, false otherwise
   Future<bool> rejectBooking(String bookingId, {String? reason}) async {
     final currentUser = _auth.currentUser;
@@ -214,7 +215,7 @@ class BookingService {
       }
 
       await _firestore.collection('bookings').doc(bookingId).update(updateData);
-      
+
       print('✅ Booking $bookingId rejected successfully');
       return true;
     } catch (e) {
@@ -224,7 +225,7 @@ class BookingService {
   }
 
   /// Cancels a booking and restores availability if it was approved
-  /// 
+  ///
   /// Returns true if successful, false otherwise
   Future<bool> cancelBooking(String bookingId) async {
     final currentUser = _auth.currentUser;
@@ -233,89 +234,166 @@ class BookingService {
     }
 
     try {
-      final result = await _firestore.runTransaction<bool>(
-        (transaction) async {
-          // Read booking
-          final bookingRef = _firestore.collection('bookings').doc(bookingId);
-          final bookingSnapshot = await transaction.get(bookingRef);
+      final result = await _firestore.runTransaction<bool>((transaction) async {
+        // Read booking
+        final bookingRef = _firestore.collection('bookings').doc(bookingId);
+        final bookingSnapshot = await transaction.get(bookingRef);
 
-          if (!bookingSnapshot.exists) {
-            throw Exception('Booking not found');
-          }
+        if (!bookingSnapshot.exists) {
+          throw Exception('Booking not found');
+        }
 
-          final bookingData = bookingSnapshot.data()!;
-          final currentStatus = (bookingData['status'] as String?)?.trim().toUpperCase();
-          
-          // Update booking status to CANCELLED
-          transaction.update(bookingRef, {
-            'status': 'CANCELLED',
-            'cancelled_at': FieldValue.serverTimestamp(),
-            'cancelled_by': currentUser.uid,
-          });
+        final bookingData = bookingSnapshot.data()!;
+        final currentStatus =
+            (bookingData['status'] as String?)?.trim().toUpperCase();
 
-          // If booking was APPROVED, restore availability
-          if (currentStatus == 'APPROVED') {
-            final vehicleId = bookingData['vehicle_id'] as String?;
-            if (vehicleId != null && vehicleId.isNotEmpty) {
-              // Get date range
-              String startDateStr;
-              String endDateStr;
+        // Update booking status to CANCELLED
+        transaction.update(bookingRef, {
+          'status': 'CANCELLED',
+          'cancelled_at': FieldValue.serverTimestamp(),
+          'cancelled_by': currentUser.uid,
+        });
 
-              if (bookingData['startDate'] is String) {
-                startDateStr = bookingData['startDate'] as String;
-                endDateStr = bookingData['endDate'] as String;
+        // If booking was APPROVED, restore availability
+        if (currentStatus == 'APPROVED') {
+          final vehicleId = bookingData['vehicle_id'] as String?;
+          if (vehicleId != null && vehicleId.isNotEmpty) {
+            // Get date range
+            String startDateStr;
+            String endDateStr;
+
+            if (bookingData['startDate'] is String) {
+              startDateStr = bookingData['startDate'] as String;
+              endDateStr = bookingData['endDate'] as String;
+            } else {
+              final startTime = bookingData['start_time'] as Timestamp?;
+              final endTime = bookingData['end_time'] as Timestamp?;
+
+              if (startTime != null && endTime != null) {
+                startDateStr =
+                    startTime.toDate().toIso8601String().split('T')[0];
+                endDateStr = endTime.toDate().toIso8601String().split('T')[0];
               } else {
-                final startTime = bookingData['start_time'] as Timestamp?;
-                final endTime = bookingData['end_time'] as Timestamp?;
-                
-                if (startTime != null && endTime != null) {
-                  startDateStr = startTime.toDate().toIso8601String().split('T')[0];
-                  endDateStr = endTime.toDate().toIso8601String().split('T')[0];
-                } else {
-                  // Can't restore if dates are missing
-                  print('⚠️ Cannot restore availability: missing dates');
-                  return true;
-                }
-              }
-
-              final datesToRestore = generateDateRange(startDateStr, endDateStr);
-              
-              // Read vehicle and restore dates
-              final vehicleRef = _firestore.collection('vehicles').doc(vehicleId);
-              final vehicleSnapshot = await transaction.get(vehicleRef);
-
-              if (vehicleSnapshot.exists) {
-                final vehicleData = vehicleSnapshot.data()!;
-                final availabilityRaw = vehicleData['availability'];
-                
-                final List<String> currentAvailability;
-                if (availabilityRaw is List) {
-                  currentAvailability = availabilityRaw.cast<String>();
-                } else {
-                  currentAvailability = [];
-                }
-
-                // Add back the cancelled dates (avoid duplicates)
-                final restoredAvailability = {...currentAvailability, ...datesToRestore}.toList()
-                  ..sort(); // Sort chronologically
-
-                transaction.update(vehicleRef, {
-                  'availability': restoredAvailability,
-                });
-
-                print('✅ Availability restored for cancelled booking: $datesToRestore');
+                // Can't restore if dates are missing
+                print('⚠️ Cannot restore availability: missing dates');
+                return true;
               }
             }
-          }
 
-          return true;
-        },
-        timeout: const Duration(seconds: 10),
-      );
+            final datesToRestore = generateDateRange(startDateStr, endDateStr);
+
+            // Read vehicle and restore dates
+            final vehicleRef = _firestore.collection('vehicles').doc(vehicleId);
+            final vehicleSnapshot = await transaction.get(vehicleRef);
+
+            if (vehicleSnapshot.exists) {
+              final vehicleData = vehicleSnapshot.data()!;
+              final availabilityRaw = vehicleData['availability'];
+
+              final List<String> currentAvailability;
+              if (availabilityRaw is List) {
+                currentAvailability = availabilityRaw.cast<String>();
+              } else {
+                currentAvailability = [];
+              }
+
+              // Add back the cancelled dates (avoid duplicates)
+              final restoredAvailability =
+                  {...currentAvailability, ...datesToRestore}.toList()
+                    ..sort(); // Sort chronologically
+
+              transaction.update(vehicleRef, {
+                'availability': restoredAvailability,
+              });
+
+              print(
+                '✅ Availability restored for cancelled booking: $datesToRestore',
+              );
+            }
+          }
+        }
+
+        return true;
+      }, timeout: const Duration(seconds: 10));
 
       return result;
     } catch (e) {
       print('❌ Error cancelling booking: $e');
+      rethrow;
+    }
+  }
+
+  /// Marks a booking as completed
+  /// This can be called either:
+  /// - Automatically by a scheduled function when end_time passes
+  /// - Manually by the user clicking "Complete Trip" button
+  ///
+  /// Parameters:
+  /// - bookingId: The booking to mark as completed
+  /// - completedBy: (optional) User ID if manually completed, null if automatic
+  ///
+  /// Returns true if successful
+  Future<bool> completeBooking(String bookingId, {String? completedBy}) async {
+    try {
+      final updateData = <String, dynamic>{
+        'status': 'Completed',
+        'completed_at': FieldValue.serverTimestamp(),
+      };
+
+      // Track whether this was manual or automatic completion
+      if (completedBy != null) {
+        updateData['completed_by'] = completedBy; // Manual completion
+        updateData['completion_type'] = 'manual';
+      } else {
+        updateData['completion_type'] = 'automatic';
+      }
+
+      await _firestore.collection('bookings').doc(bookingId).update(updateData);
+
+      print('✅ Booking $bookingId marked as completed');
+      return true;
+    } catch (e) {
+      print('❌ Error completing booking: $e');
+      rethrow;
+    }
+  }
+
+  /// Automatically completes all bookings that have passed their end_time
+  /// This should be called daily at midnight
+  ///
+  /// Returns the number of bookings that were completed
+  Future<int> autoCompleteExpiredBookings() async {
+    try {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final todayTimestamp = Timestamp.fromDate(today);
+
+      // Find all APPROVED bookings where end_time < today (midnight)
+      final expiredBookings =
+          await _firestore
+              .collection('bookings')
+              .where('status', isEqualTo: 'APPROVED')
+              .where('end_time', isLessThan: todayTimestamp)
+              .get();
+
+      int completedCount = 0;
+
+      // Complete each expired booking
+      for (final doc in expiredBookings.docs) {
+        try {
+          await completeBooking(
+            doc.id,
+          ); // Automatic completion (no completedBy)
+          completedCount++;
+        } catch (e) {
+          print('❌ Failed to complete booking ${doc.id}: $e');
+        }
+      }
+
+      print('✅ Auto-completed $completedCount bookings');
+      return completedCount;
+    } catch (e) {
+      print('❌ Error in auto-completion: $e');
       rethrow;
     }
   }

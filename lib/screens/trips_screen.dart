@@ -1,10 +1,16 @@
-import 'package:car_listing_app/screens/location_debug.dart';
+import 'dart:io';
+
+import 'package:car_listing_app/firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_functions/firebase_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme/app_colors.dart';
 import '../services/booking_service.dart';
 import 'booking_details_screen.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 class TripsScreen extends StatefulWidget {
   /// If true, show trips as HOST (bookings where owner_id == current user).
@@ -23,7 +29,10 @@ class _TripsScreenState extends State<TripsScreen>
   late final bool _viewAsHost;
   bool _isCancelling = false;
   bool _isApproving = false; // Track approval in progress
-  final BookingService _bookingService = BookingService(); // Atomic booking service
+  final Set<String> _startingTripIds = {};
+  final ImagePicker _imagePicker = ImagePicker();
+  final BookingService _bookingService =
+      BookingService(); // Atomic booking service
 
   @override
   void initState() {
@@ -113,13 +122,12 @@ class _TripsScreenState extends State<TripsScreen>
       ),
       // // Add a floating action button to trips_screen.dart for testing
       // floatingActionButton: FloatingActionButton(
-      //   onPressed: () {
-      //     Navigator.push(
+      //   onPressed: () async {
+      //     final bookingService = BookingService();
+      //     final count = await bookingService.autoCompleteExpiredBookings();
+      //     ScaffoldMessenger.of(
       //       context,
-      //       MaterialPageRoute(
-      //         builder: (context) => const LocationDebugScreen(),
-      //       ),
-      //     );
+      //     ).showSnackBar(SnackBar(content: Text('Completed $count bookings')));
       //   },
       //   child: const Icon(Icons.bug_report),
       // ),
@@ -213,6 +221,7 @@ class _TripsScreenState extends State<TripsScreen>
     if (raw == 'approved') return 'Approved';
     if (raw == 'rejected') return 'Rejected';
     if (raw == 'completed') return 'Completed';
+    if (raw == 'started') return 'Trip Started';
     if (raw == 'confirmed') return 'Confirmed';
     if (raw == 'pending') return 'Pending';
     if (raw == 'waiting for the approval' || raw == 'waiting') {
@@ -227,14 +236,145 @@ class _TripsScreenState extends State<TripsScreen>
     return raw == 'cancelled' || raw == 'canceled';
   }
 
-  bool _isWaitingForApproval(Map<String, dynamic> booking) {
+  bool _isCompleted(Map<String, dynamic> booking) {
     final raw = (booking['status'] as String?)?.trim().toLowerCase();
-    return raw == 'waiting for the approval' || 
-           raw == 'waiting' || 
-           raw == 'pending'; // New PENDING status
+    return raw == 'completed';
   }
 
-  // (reserved for future use) approved check can be added when Modify depends on it
+  bool _isWaitingForApproval(Map<String, dynamic> booking) {
+    final raw = (booking['status'] as String?)?.trim().toLowerCase();
+    return raw == 'waiting for the approval' ||
+        raw == 'waiting' ||
+        raw == 'pending'; // New PENDING status
+  }
+
+  bool _isApproved(Map<String, dynamic> booking) {
+    final raw = (booking['status'] as String?)?.trim().toLowerCase();
+    return raw == 'approved';
+  }
+
+  bool _isTripStarted(Map<String, dynamic> booking) {
+    final raw = (booking['status'] as String?)?.trim().toLowerCase();
+    return raw == 'started' || booking['trip_started_at'] != null;
+  }
+
+  bool _isFirstDayOfBooking(DateTime start) {
+    final today = _startOfToday();
+    final startDay = DateTime(start.year, start.month, start.day);
+    return startDay == today;
+  }
+
+  /// Generates a list of date strings between start and end (inclusive)
+  List<String> _generateDateRange(DateTime start, DateTime end) {
+    final dates = <String>[];
+    DateTime current = DateTime(start.year, start.month, start.day);
+    final endNormalized = DateTime(end.year, end.month, end.day);
+
+    while (!current.isAfter(endNormalized)) {
+      // Format as YYYY-MM-DD to match your Firebase format
+      final dateStr =
+          '${current.year}-${current.month.toString().padLeft(2, '0')}-${current.day.toString().padLeft(2, '0')}';
+      dates.add(dateStr);
+      current = current.add(const Duration(days: 1));
+    }
+
+    return dates;
+  }
+
+  /// Restores availability dates when a booking is cancelled or rejected
+  Future<void> _restoreAvailability(String bookingId) async {
+    try {
+      // Get the booking document
+      final bookingDoc =
+          await FirebaseFirestore.instance
+              .collection('bookings')
+              .doc(bookingId)
+              .get();
+
+      if (!bookingDoc.exists) {
+        throw Exception('Booking not found');
+      }
+
+      final bookingData = bookingDoc.data()!;
+      final vehicleId = bookingData['vehicle_id'] as String?;
+      final startTime = bookingData['start_time'] as Timestamp?;
+      final endTime = bookingData['end_time'] as Timestamp?;
+
+      if (vehicleId == null || startTime == null || endTime == null) {
+        throw Exception('Missing booking information');
+      }
+
+      // Generate the date range that was blocked
+      final blockedDates = _generateDateRange(
+        startTime.toDate(),
+        endTime.toDate(),
+      );
+
+      // Add these dates back to the vehicle's availability array
+      await FirebaseFirestore.instance
+          .collection('vehicles')
+          .doc(vehicleId)
+          .update({'availability': FieldValue.arrayUnion(blockedDates)});
+
+      //print('Restored ${blockedDates.length} dates to vehicle $vehicleId');
+    } catch (e) {
+      //print('Error restoring availability: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _rejectBooking(String bookingId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Reject booking?'),
+            content: const Text(
+              'Are you sure you want to reject this booking request?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('No'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Yes, reject'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId)
+          .update({
+            'status': 'Rejected',
+            'rejected_at': FieldValue.serverTimestamp(),
+            'rejected_by': user.uid,
+          });
+
+      // Restore availability (in case dates were pre-blocked)
+      await _restoreAvailability(bookingId);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Booking rejected')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to reject: $e')));
+    }
+  }
 
   Future<void> _cancelBooking(String bookingId) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -274,6 +414,7 @@ class _TripsScreenState extends State<TripsScreen>
 
     setState(() => _isCancelling = true);
     try {
+      // Update booking status to Cancelled
       await FirebaseFirestore.instance
           .collection('bookings')
           .doc(bookingId)
@@ -283,15 +424,24 @@ class _TripsScreenState extends State<TripsScreen>
             'cancelled_by': user.uid,
           });
 
+      // Restore the blocked dates back to availability
+      await _restoreAvailability(bookingId);
+
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Trip cancelled')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Trip cancelled and dates restored'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to cancel: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to cancel: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isCancelling = false);
     }
@@ -322,9 +472,7 @@ class _TripsScreenState extends State<TripsScreen>
       if (!mounted) return;
 
       if (success) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Trip approved and dates blocked successfully'),
             backgroundColor: Colors.green,
@@ -333,12 +481,10 @@ class _TripsScreenState extends State<TripsScreen>
       }
     } catch (e) {
       if (!mounted) return;
-      
+
       // Display user-friendly error message
       final errorMessage = e.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMessage),
           backgroundColor: Colors.red,
@@ -361,6 +507,148 @@ class _TripsScreenState extends State<TripsScreen>
             ),
       ),
     );
+  }
+
+  Future<ImageSource?> _selectVideoSource() {
+    return showDialog<ImageSource>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Upload walkaround video'),
+            content: const Text('Choose how to upload your walkaround video.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, ImageSource.camera),
+                child: const Text('Record'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, ImageSource.gallery),
+                child: const Text('Gallery'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, null),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Future<void> _startTripWithWalkaroundVideo(String bookingId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please log in first.')));
+      return;
+    }
+
+    if (_startingTripIds.contains(bookingId)) return;
+    setState(() => _startingTripIds.add(bookingId));
+
+    bool loadingShown = false;
+    try {
+      // print('StartTrip: bookingId=$bookingId');
+      // print('StartTrip: user.uid=${user.uid}');
+      try {
+        final bucket = FirebaseStorage.instance.bucket;
+        //print('StartTrip: storageBucket=$bucket');
+        //print('StartTrip: projectId=${DefaultFirebaseOptions.currentPlatform.projectId}');
+
+      } catch (_) { 
+        // ignore
+      }
+
+      // Preflight: validate booking and renter match to help debug auth failures
+      final bookingSnap =
+          await FirebaseFirestore.instance
+              .collection('bookings')
+              .doc(bookingId)
+              .get();
+      if (!bookingSnap.exists) {
+        throw Exception('Booking not found for id: $bookingId');
+      }
+      final bookingData = bookingSnap.data() ?? {};
+      final renterId = bookingData['renter_id'] as String?;
+      if (renterId == null || renterId != user.uid) {
+        throw Exception(
+          'Renter mismatch. booking.renter_id=$renterId, user.uid=${user.uid}',
+        );
+      }
+      print('StartTrip: booking renter_id matches user');
+
+      final source = await _selectVideoSource();
+      if (source == null) return;
+
+      final picked = await _imagePicker.pickVideo(source: source);
+      if (picked == null) return;
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => const Center(child: CircularProgressIndicator()),
+      );
+      loadingShown = true;
+
+      final file = File(picked.path);
+      print('StartTrip: picked video path=${picked.path}');
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('bookings/$bookingId/start/renter_walkaround.mp4');
+      print(
+        'StartTrip: upload target=bookings/$bookingId/start/renter_walkaround.mp4',
+      );
+      await storageRef.putFile(file);
+      print('StartTrip: upload complete');
+      final url = await storageRef.getDownloadURL();
+      print('StartTrip: downloadUrl=$url');
+
+      final confirmStart = FirebaseFunctions.instance.httpsCallable(
+        'confirmBookingStart',
+      );
+      print('StartTrip: calling confirmBookingStart');
+      await confirmStart.call({'bookingId': bookingId});
+      print('StartTrip: confirmBookingStart success');
+
+      await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId)
+          .update({
+            'walkaround_video_url': url,
+            'walkaround_video_uploaded_at': FieldValue.serverTimestamp(),
+          });
+
+      if (!mounted) return;
+      if (loadingShown) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Trip started and walkaround video uploaded.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (e is FirebaseException) {
+        print('StartTrip: FirebaseException code=${e.code} message=${e.message}');
+      } else {
+        print('StartTrip: error=$e');
+      }
+      if (!mounted) return;
+      if (loadingShown) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to start trip: $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _startingTripIds.remove(bookingId));
+      }
+    }
   }
 
   Widget _buildUpcomingTab(double screenHeight, double screenWidth) {
@@ -391,6 +679,7 @@ class _TripsScreenState extends State<TripsScreen>
             docs.where((d) {
                 final data = d.data();
                 if (_isCancelled(data)) return false;
+                if (_isCompleted(data)) return false;
                 final endTs = data['end_time'];
                 if (endTs is! Timestamp) return false;
                 return !endTs.toDate().isBefore(todayStart);
@@ -504,8 +793,9 @@ class _TripsScreenState extends State<TripsScreen>
                 final data = d.data();
                 final endTs = data['end_time'];
                 if (endTs is! Timestamp) return false;
-                // Show cancelled bookings in history even if they are in the future
+                // Show cancelled/completed bookings in history even if they are in the future
                 if (_isCancelled(data)) return true;
+                if (_isCompleted(data)) return true;
                 return endTs.toDate().isBefore(todayStart);
               }).toList()
               ..sort((a, b) {
@@ -658,6 +948,14 @@ class _TripsScreenState extends State<TripsScreen>
     final end = (booking['end_time'] as Timestamp).toDate();
     final dateRange = _formatDateRangeShort(start, end);
     final amountPaid = (booking['amount_paid'] as num?)?.toDouble() ?? 0.0;
+    final isFirstDay = _isFirstDayOfBooking(start);
+    final isTripStarted = _isTripStarted(booking);
+    final canStartTrip =
+        !_viewAsHost &&
+        isUpcoming &&
+        isFirstDay &&
+        _isApproved(booking) &&
+        !isTripStarted;
 
     return FutureBuilder<Map<String, dynamic>?>(
       future: _loadVehicle(vehicleId),
@@ -689,6 +987,9 @@ class _TripsScreenState extends State<TripsScreen>
           showWaitingLabel: !_viewAsHost && _isWaitingForApproval(booking),
           // Host sees Approve button when waiting; after approved, show Cancel/Modify row.
           showApproveButton: _viewAsHost && _isWaitingForApproval(booking),
+          showStartTripButton: canStartTrip,
+          showTripStartedLabel: !_viewAsHost && isTripStarted,
+          onStartTrip: canStartTrip ? () => _startTripWithWalkaroundVideo(bookingId) : null,
           onApprove:
               _viewAsHost && _isWaitingForApproval(booking)
                   ? () async => _approveBooking(bookingId)
@@ -756,7 +1057,10 @@ class _TripsScreenState extends State<TripsScreen>
     required bool isUpcoming,
     bool showWaitingLabel = false,
     bool showApproveButton = false,
+    bool showStartTripButton = false,
+    bool showTripStartedLabel = false,
     VoidCallback? onApprove,
+    VoidCallback? onStartTrip,
     VoidCallback? onCancel,
   }) {
     return Container(
@@ -870,111 +1174,129 @@ class _TripsScreenState extends State<TripsScreen>
             ],
           ),
 
-          Row(
-            children: [
-              Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-              SizedBox(width: screenWidth * 0.01),
-              Expanded(
-                child: Text(
-                  location,
-                  style: TextStyle(
-                    fontSize: screenHeight * 0.015,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
           SizedBox(height: screenHeight * 0.015),
 
           // Action Buttons (kept like your UI)
           if (isUpcoming)
-            (showApproveButton
-                ? SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: onApprove,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: AppColors.lightText,
-                      elevation: 0,
-                      padding: EdgeInsets.symmetric(
-                        vertical: screenHeight * 0.015,
+            Column(
+              children: [
+                if (showApproveButton)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: onApprove,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: AppColors.lightText,
+                        elevation: 0,
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenHeight * 0.015,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
+                      child: Text(
+                        'Approve',
+                        style: TextStyle(
+                          fontSize: screenHeight * 0.016,
+                          color: AppColors.lightText,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    child: Text(
-                      'Approve',
-                      style: TextStyle(
-                        fontSize: screenHeight * 0.016,
-                        color: AppColors.lightText,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                )
-                : Row(
-                  children: [
-                    Expanded(
+                  )
+                else ...[
+                  if (showStartTripButton || showTripStartedLabel) ...[
+                    SizedBox(
+                      width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _isCancelling ? null : onCancel,
+                        onPressed: showStartTripButton ? onStartTrip : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: AppColors.lightText,
                           elevation: 0,
                           padding: EdgeInsets.symmetric(
                             vertical: screenHeight * 0.015,
                           ),
-                          side: BorderSide(color: Colors.grey[300]!),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
                           ),
                         ),
                         child: Text(
-                          _isCancelling ? 'Cancelling...' : 'Cancel Trip',
+                          showTripStartedLabel ? 'Trip Started' : 'Start Trip',
                           style: TextStyle(
                             fontSize: screenHeight * 0.016,
-                            color: Colors.black,
+                            color: AppColors.lightText,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(width: screenWidth * 0.03),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _navigateToBookingDetails(bookingId),
-                        icon: Icon(
-                          _viewAsHost ? Icons.visibility : Icons.edit,
-                          size: 16,
-                          color: AppColors.accent,
-                        ),
-                        label: Text(
-                          _viewAsHost ? 'View Details' : 'Modify',
-                          style: TextStyle(
-                            fontSize: screenHeight * 0.016,
-                            color: AppColors.accent,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accent.withOpacity(0.1),
-                          foregroundColor: AppColors.accent,
-                          elevation: 0,
-                          padding: EdgeInsets.symmetric(
-                            vertical: screenHeight * 0.015,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                      ),
-                    ),
+                    SizedBox(height: screenHeight * 0.012),
                   ],
-                )),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isCancelling ? null : onCancel,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(
+                              vertical: screenHeight * 0.015,
+                            ),
+                            side: BorderSide(color: Colors.grey[300]!),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                          ),
+                          child: Text(
+                            _isCancelling ? 'Cancelling...' : 'Cancel Trip',
+                            style: TextStyle(
+                              fontSize: screenHeight * 0.016,
+                              color: Colors.black,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: screenWidth * 0.03),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _navigateToBookingDetails(bookingId),
+                          icon: Icon(
+                            _viewAsHost ? Icons.visibility : Icons.edit,
+                            size: 16,
+                            color: AppColors.accent,
+                          ),
+                          label: Text(
+                            _viewAsHost ? 'View Details' : 'Modify',
+                            style: TextStyle(
+                              fontSize: screenHeight * 0.016,
+                              color: AppColors.accent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.accent.withOpacity(0.1),
+                            foregroundColor: AppColors.accent,
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(
+                              vertical: screenHeight * 0.015,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
         ],
       ),
     );

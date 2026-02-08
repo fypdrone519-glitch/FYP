@@ -18,6 +18,8 @@
 	<string>We need your location to show your car's location</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We need access to your photo library to upload car images</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app uses the microphone to record audio with your videos.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>We need access to your camera to take car photos</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
