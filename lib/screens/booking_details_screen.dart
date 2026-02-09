@@ -668,6 +668,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     Color? valueColor,
     bool valueBold = false,
   }) {
+    if(value == 'approved')
+    {
+      value = "Waiting for host to start trip";
+    }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

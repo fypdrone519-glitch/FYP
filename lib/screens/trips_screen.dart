@@ -8,6 +8,7 @@ import 'package:firebase_functions/firebase_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../services/booking_service.dart';
 import 'booking_details_screen.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -30,6 +31,7 @@ class _TripsScreenState extends State<TripsScreen>
   bool _isCancelling = false;
   bool _isApproving = false; // Track approval in progress
   final Set<String> _startingTripIds = {};
+  final Set<String> _endingTripIds = {};
   final ImagePicker _imagePicker = ImagePicker();
   final BookingService _bookingService =
       BookingService(); // Atomic booking service
@@ -156,6 +158,12 @@ class _TripsScreenState extends State<TripsScreen>
     return DateTime(now.year, now.month, now.day);
   }
 
+  bool _isEndDay(DateTime end) {
+    final today = _startOfToday();
+    final endDay = DateTime(end.year, end.month, end.day);
+    return endDay == today;
+  }
+
   String _monthName(int month) {
     const months = [
       'January',
@@ -241,6 +249,10 @@ class _TripsScreenState extends State<TripsScreen>
     return raw == 'completed';
   }
 
+  bool _isEnded(Map<String, dynamic> booking) {
+    final raw = (booking['status'] as String?)?.trim().toLowerCase();
+    return raw == 'ended';
+  }
   bool _isWaitingForApproval(Map<String, dynamic> booking) {
     final raw = (booking['status'] as String?)?.trim().toLowerCase();
     return raw == 'waiting for the approval' ||
@@ -258,10 +270,21 @@ class _TripsScreenState extends State<TripsScreen>
     return raw == 'started' || booking['trip_started_at'] != null;
   }
 
-  bool _isFirstDayOfBooking(DateTime start) {
-    final today = _startOfToday();
-    final startDay = DateTime(start.year, start.month, start.day);
-    return startDay == today;
+  DateTime? _resolveBookingStartDate(Map<String, dynamic> booking) {
+    final rawStartDate = booking['startdate'] ?? booking['start_date'];
+    if (rawStartDate is Timestamp) return rawStartDate.toDate();
+    if (rawStartDate is DateTime) return rawStartDate;
+    if (rawStartDate is String) {
+      final parsed = DateTime.tryParse(rawStartDate);
+      if (parsed != null) return parsed;
+    }
+
+    final rawStartTime = booking['start_time'];
+    if (rawStartTime is Timestamp) return rawStartTime.toDate();
+    if (rawStartTime is DateTime) return rawStartTime;
+    if (rawStartTime is String) return DateTime.tryParse(rawStartTime);
+
+    return null;
   }
 
   /// Generates a list of date strings between start and end (inclusive)
@@ -651,6 +674,145 @@ class _TripsScreenState extends State<TripsScreen>
     }
   }
 
+  Future<List<String>?> _uploadHostEndPhotos(String bookingId) async {
+    final photos = await _imagePicker.pickMultiImage();
+    if (photos.isEmpty) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No photos selected.')),
+      );
+      return null;
+    }
+
+    if (!mounted) return null;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final urls = <String>[];
+    try {
+      for (int i = 0; i < photos.length; i++) {
+        final file = File(photos[i].path);
+        final storageRef = FirebaseStorage.instance
+            .ref()
+            .child('bookings/$bookingId/end/host/photo_${i + 1}.jpg');
+        await storageRef.putFile(file);
+        final url = await storageRef.getDownloadURL();
+        urls.add(url);
+      }
+
+      if (!mounted) return null;
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('End trip photos uploaded.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      return urls;
+    } catch (e) {
+      if (!mounted) return null;
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to upload photos: $e')));
+      return null;
+    }
+  }
+
+  Future<void> _endTrip({
+    required String bookingId,
+    required String actor,
+    required bool uploadPhotosBefore,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please log in first.')));
+      return;
+    }
+
+    if (_endingTripIds.contains(bookingId)) return;
+    setState(() => _endingTripIds.add(bookingId));
+
+    bool loadingShown = false;
+    try {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+      loadingShown = true;
+
+      List<String>? endPhotoUrls;
+      if (uploadPhotosBefore) {
+        if (loadingShown) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        loadingShown = false;
+        endPhotoUrls = await _uploadHostEndPhotos(bookingId);
+        if (endPhotoUrls == null || endPhotoUrls.isEmpty) {
+          return;
+        }
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
+        );
+        loadingShown = true;
+      }
+
+      final confirmEnd = FirebaseFunctions.instance.httpsCallable(
+        'confirmBookingEnd',
+      );
+      await confirmEnd.call({
+        'bookingId': bookingId,
+        'actor': actor,
+        'hasDamage': false,
+      });
+
+      if (uploadPhotosBefore && endPhotoUrls != null) {
+        await FirebaseFirestore.instance
+            .collection('bookings')
+            .doc(bookingId)
+            .update({
+              'end_photo_urls': endPhotoUrls,
+              'end_photos_uploaded_at': FieldValue.serverTimestamp(),
+            });
+      }
+
+      if (!mounted) return;
+      if (loadingShown) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Trip end confirmed.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+    } catch (e) {
+      if (!mounted) return;
+      if (loadingShown) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to end trip: $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _endingTripIds.remove(bookingId));
+      }
+    }
+  }
+
   Widget _buildUpcomingTab(double screenHeight, double screenWidth) {
     final baseQuery = _baseBookingsQuery();
     if (baseQuery == null) {
@@ -680,6 +842,7 @@ class _TripsScreenState extends State<TripsScreen>
                 final data = d.data();
                 if (_isCancelled(data)) return false;
                 if (_isCompleted(data)) return false;
+                if (_isEnded(data)) return false;
                 final endTs = data['end_time'];
                 if (endTs is! Timestamp) return false;
                 return !endTs.toDate().isBefore(todayStart);
@@ -796,6 +959,7 @@ class _TripsScreenState extends State<TripsScreen>
                 // Show cancelled/completed bookings in history even if they are in the future
                 if (_isCancelled(data)) return true;
                 if (_isCompleted(data)) return true;
+                if (_isEnded(data)) return true;
                 return endTs.toDate().isBefore(todayStart);
               }).toList()
               ..sort((a, b) {
@@ -948,14 +1112,34 @@ class _TripsScreenState extends State<TripsScreen>
     final end = (booking['end_time'] as Timestamp).toDate();
     final dateRange = _formatDateRangeShort(start, end);
     final amountPaid = (booking['amount_paid'] as num?)?.toDouble() ?? 0.0;
-    final isFirstDay = _isFirstDayOfBooking(start);
     final isTripStarted = _isTripStarted(booking);
-    final canStartTrip =
-        !_viewAsHost &&
-        isUpcoming &&
-        isFirstDay &&
-        _isApproved(booking) &&
-        !isTripStarted;
+    final isEndDay = _isEndDay(end);
+    final resolvedStart = _resolveBookingStartDate(booking) ?? start;
+    final todayStart = _startOfToday();
+    final startDay = DateTime(
+      resolvedStart.year,
+      resolvedStart.month,
+      resolvedStart.day,
+    );
+    final isBeforeStartDay = startDay.isAfter(todayStart);
+    final isStartDayOrAfter = !isBeforeStartDay;
+    final canStartTripBase =
+        !_viewAsHost && isUpcoming && _isApproved(booking) && !isTripStarted;
+    final showStartTripButton = canStartTripBase;
+    final enableStartTripButton = canStartTripBase && isStartDayOrAfter;
+    final showStartTripOnlyButton = canStartTripBase;
+    final showCancelOnlyButton = !_viewAsHost && isUpcoming && isTripStarted;
+    final showEndTripOnlyButtonForHost =
+        _viewAsHost && isUpcoming && isTripStarted && isEndDay;
+    final showEndTripOnlyButtonForRenter =
+        !_viewAsHost && isUpcoming && isTripStarted && isEndDay;
+    final endConfirmations =
+        (booking['end_confirmations'] as Map?)?.cast<String, dynamic>() ??
+        const {};
+    final hostAlreadyConfirmed = endConfirmations['host'] == true;
+    final renterAlreadyConfirmed = endConfirmations['renter'] == true;
+    final showHostWaitingForRenterEnd =
+        _viewAsHost && hostAlreadyConfirmed && !renterAlreadyConfirmed;
 
     return FutureBuilder<Map<String, dynamic>?>(
       future: _loadVehicle(vehicleId),
@@ -987,9 +1171,20 @@ class _TripsScreenState extends State<TripsScreen>
           showWaitingLabel: !_viewAsHost && _isWaitingForApproval(booking),
           // Host sees Approve button when waiting; after approved, show Cancel/Modify row.
           showApproveButton: _viewAsHost && _isWaitingForApproval(booking),
-          showStartTripButton: canStartTrip,
-          showTripStartedLabel: !_viewAsHost && isTripStarted,
-          onStartTrip: canStartTrip ? () => _startTripWithWalkaroundVideo(bookingId) : null,
+          showApprovedWaitingBadge: _viewAsHost && _isApproved(booking),
+          showStartTripButton: showStartTripButton,
+          showTripStartedLabel: false,
+          showStartTripOnlyButton: showStartTripOnlyButton,
+          showCancelOnlyButton:
+              showEndTripOnlyButtonForRenter ? false : showCancelOnlyButton,
+          showEndTripOnlyButton:
+              (showEndTripOnlyButtonForHost && !hostAlreadyConfirmed) ||
+              (showEndTripOnlyButtonForRenter && !renterAlreadyConfirmed),
+          showWaitingForRenterToEndButton: showHostWaitingForRenterEnd,
+          onStartTrip:
+              enableStartTripButton
+                  ? () => _startTripWithWalkaroundVideo(bookingId)
+                  : null,
           onApprove:
               _viewAsHost && _isWaitingForApproval(booking)
                   ? () async => _approveBooking(bookingId)
@@ -998,6 +1193,16 @@ class _TripsScreenState extends State<TripsScreen>
               isUpcoming
                   ? () async {
                     await _cancelBooking(bookingId);
+                  }
+                  : null,
+          onEndTrip:
+              (showEndTripOnlyButtonForHost || showEndTripOnlyButtonForRenter)
+                  ? () async {
+                    await _endTrip(
+                      bookingId: bookingId,
+                      actor: _viewAsHost ? 'host' : 'renter',
+                      uploadPhotosBefore: _viewAsHost,
+                    );
                   }
                   : null,
         );
@@ -1057,21 +1262,29 @@ class _TripsScreenState extends State<TripsScreen>
     required bool isUpcoming,
     bool showWaitingLabel = false,
     bool showApproveButton = false,
+    bool showApprovedWaitingBadge = false,
     bool showStartTripButton = false,
     bool showTripStartedLabel = false,
+    bool showStartTripOnlyButton = false,
+    bool showCancelOnlyButton = false,
+    bool showEndTripOnlyButton = false,
+    bool showWaitingForRenterToEndButton = false,
     VoidCallback? onApprove,
     VoidCallback? onStartTrip,
     VoidCallback? onCancel,
+    VoidCallback? onEndTrip,
   }) {
-    return Container(
-      padding: EdgeInsets.all(screenWidth * 0.04),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        children: [
+    return Stack(
+      children: [
+        Container(
+          padding: EdgeInsets.all(screenWidth * 0.04),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: Column(
+            children: [
           // Car Info Row
           Row(
             children: [
@@ -1206,7 +1419,88 @@ class _TripsScreenState extends State<TripsScreen>
                       ),
                     ),
                   )
-                else ...[
+                else if (showCancelOnlyButton) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isCancelling ? null : onCancel,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        elevation: 0,
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenHeight * 0.015,
+                        ),
+                        side: BorderSide(color: Colors.grey[300]!),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                      child: Text(
+                        _isCancelling ? 'Cancelling...' : 'Cancel',
+                        style: TextStyle(
+                          fontSize: screenHeight * 0.016,
+                          color: Colors.black,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else if (showEndTripOnlyButton) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: onEndTrip,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: AppColors.lightText,
+                        elevation: 0,
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenHeight * 0.015,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                      child: Text(
+                        _endingTripIds.contains(bookingId)
+                            ? 'Ending...'
+                            : 'End Trip',
+                        style: TextStyle(
+                          fontSize: screenHeight * 0.016,
+                          color: AppColors.lightText,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else if (showWaitingForRenterToEndButton) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[300],
+                        foregroundColor: Colors.grey[600],
+                        elevation: 0,
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenHeight * 0.015,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                      child: Text(
+                        'Waiting for renter to end',
+                        style: TextStyle(
+                          fontSize: screenHeight * 0.016,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
                   if (showStartTripButton || showTripStartedLabel) ...[
                     SizedBox(
                       width: double.infinity,
@@ -1215,6 +1509,8 @@ class _TripsScreenState extends State<TripsScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accent,
                           foregroundColor: AppColors.lightText,
+                          disabledBackgroundColor: Colors.grey[300],
+                          disabledForegroundColor: Colors.grey[600],
                           elevation: 0,
                           padding: EdgeInsets.symmetric(
                             vertical: screenHeight * 0.015,
@@ -1227,7 +1523,10 @@ class _TripsScreenState extends State<TripsScreen>
                           showTripStartedLabel ? 'Trip Started' : 'Start Trip',
                           style: TextStyle(
                             fontSize: screenHeight * 0.016,
-                            color: AppColors.lightText,
+                            color:
+                                showStartTripButton && onStartTrip == null
+                                    ? Colors.grey[600]
+                                    : AppColors.lightText,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1235,70 +1534,99 @@ class _TripsScreenState extends State<TripsScreen>
                     ),
                     SizedBox(height: screenHeight * 0.012),
                   ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _isCancelling ? null : onCancel,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            elevation: 0,
-                            padding: EdgeInsets.symmetric(
-                              vertical: screenHeight * 0.015,
+                  if (!showStartTripOnlyButton)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _isCancelling ? null : onCancel,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black,
+                              elevation: 0,
+                              padding: EdgeInsets.symmetric(
+                                vertical: screenHeight * 0.015,
+                              ),
+                              side: BorderSide(color: Colors.grey[300]!),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
                             ),
-                            side: BorderSide(color: Colors.grey[300]!),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                          ),
-                          child: Text(
-                            _isCancelling ? 'Cancelling...' : 'Cancel Trip',
-                            style: TextStyle(
-                              fontSize: screenHeight * 0.016,
-                              color: Colors.black,
-                              fontWeight: FontWeight.w600,
+                            child: Text(
+                              _isCancelling ? 'Cancelling...' : 'Cancel Trip',
+                              style: TextStyle(
+                                fontSize: screenHeight * 0.016,
+                                color: Colors.black,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      SizedBox(width: screenWidth * 0.03),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _navigateToBookingDetails(bookingId),
-                          icon: Icon(
-                            _viewAsHost ? Icons.visibility : Icons.edit,
-                            size: 16,
-                            color: AppColors.accent,
-                          ),
-                          label: Text(
-                            _viewAsHost ? 'View Details' : 'Modify',
-                            style: TextStyle(
-                              fontSize: screenHeight * 0.016,
+                        SizedBox(width: screenWidth * 0.03),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed:
+                                () => _navigateToBookingDetails(bookingId),
+                            icon: Icon(
+                              _viewAsHost ? Icons.visibility : Icons.edit,
+                              size: 16,
                               color: AppColors.accent,
-                              fontWeight: FontWeight.w600,
                             ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.accent.withOpacity(0.1),
-                            foregroundColor: AppColors.accent,
-                            elevation: 0,
-                            padding: EdgeInsets.symmetric(
-                              vertical: screenHeight * 0.015,
+                            label: Text(
+                              _viewAsHost ? 'View Details' : 'Modify',
+                              style: TextStyle(
+                                fontSize: screenHeight * 0.016,
+                                color: AppColors.accent,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.accent.withOpacity(
+                                0.1,
+                              ),
+                              foregroundColor: AppColors.accent,
+                              elevation: 0,
+                              padding: EdgeInsets.symmetric(
+                                vertical: screenHeight * 0.015,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                 ],
               ],
             ),
         ],
-      ),
+          ),
+        ),
+        if (showApprovedWaitingBadge)
+          Positioned(
+            top: AppSpacing.sm,
+            right: AppSpacing.sm,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 6,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Waiting for renter to start',
+                style: TextStyle(
+                  color: AppColors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 

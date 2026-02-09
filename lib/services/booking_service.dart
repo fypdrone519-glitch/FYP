@@ -163,7 +163,7 @@ class BookingService {
 
         // Step 7: Update booking status to APPROVED (atomically)
         transaction.update(bookingRef, {
-          'status': 'APPROVED',
+          'status': 'approved',
           'approved_at': FieldValue.serverTimestamp(),
           'approved_by': currentUser.uid,
         });
@@ -205,7 +205,7 @@ class BookingService {
 
     try {
       final updateData = {
-        'status': 'REJECTED',
+        'status': 'rejected',
         'rejected_at': FieldValue.serverTimestamp(),
         'rejected_by': currentUser.uid,
       };
@@ -245,17 +245,17 @@ class BookingService {
 
         final bookingData = bookingSnapshot.data()!;
         final currentStatus =
-            (bookingData['status'] as String?)?.trim().toUpperCase();
+            (bookingData['status'] as String?)?.trim().toLowerCase();
 
         // Update booking status to CANCELLED
         transaction.update(bookingRef, {
-          'status': 'CANCELLED',
+          'status': 'cancelled  ',
           'cancelled_at': FieldValue.serverTimestamp(),
           'cancelled_by': currentUser.uid,
         });
 
         // If booking was APPROVED, restore availability
-        if (currentStatus == 'APPROVED') {
+        if (currentStatus == 'approved') {
           final vehicleId = bookingData['vehicle_id'] as String?;
           if (vehicleId != null && vehicleId.isNotEmpty) {
             // Get date range
