@@ -24,13 +24,27 @@ class _AddCarScreenState extends State<AddCarScreen> {
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _contactController = TextEditingController();
-  final TextEditingController _drivingLicenseController = TextEditingController();
-  final TextEditingController _carRegistrationController = TextEditingController();
+  final TextEditingController _drivingLicenseController =
+      TextEditingController();
+  final TextEditingController _carRegistrationController =
+      TextEditingController();
   final TextEditingController _carAbilityController = TextEditingController();
   final TextEditingController _rentPerDayController = TextEditingController();
   final TextEditingController _rentPerHourController = TextEditingController();
 
   // State variables
+  String _selectedVehicleType = '';
+  // List of vehicle types for the grid
+  final List<String> _vehicleTypes = [
+    'SUV',
+    'Sedan',
+    'Hatchback',
+    'Crossover',
+    'Coupe',
+    'Convertible',
+    'Pickup Truck',
+    'Minivan/MPV',
+  ];
   String? _transmissionType;
   Set<String> _drivingOptions = {};
   Set<String> _selectedFeatures = {}; // to store selected features
@@ -44,28 +58,44 @@ class _AddCarScreenState extends State<AddCarScreen> {
   //varibale to store the location of the car
   LatLng? carLocation;
   GoogleMapController? _mapController;
-  LatLng _currentPosition = const LatLng(33.6844, 73.0479); // Default to Islamabad
+  LatLng _currentPosition = const LatLng(
+    33.6844,
+    73.0479,
+  ); // Default to Islamabad
   bool _isLoadingLocation = false;
   Set<Marker> _markers = {};
-  bool _isInteractingWithMap = false; //to aviod scrolling when interacting with the map
+  bool _isInteractingWithMap =
+      false; //to aviod scrolling when interacting with the map
   // Street Address variable
   String? _streetAddress;
 
   //image selection variable
   List<File> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
-  
+
   // Firebase instances
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
+
   // Loading state
   bool _isSubmitting = false;
 
   // Car brands data
-  final List<String> regularBrands = ['Changan', 'Honda', 'Toyota', 'Nissan', 'Mercedes'];
-  final List<String> luxuryBrands = ['BMW', 'Ferrari', 'Bentley', 'Maybach', 'Lamborghini'];
+  final List<String> regularBrands = [
+    'Changan',
+    'Honda',
+    'Toyota',
+    'Nissan',
+    'Mercedes',
+  ];
+  final List<String> luxuryBrands = [
+    'BMW',
+    'Ferrari',
+    'Bentley',
+    'Maybach',
+    'Lamborghini',
+  ];
 
   // Colors data
   final List<Map<String, dynamic>> colors = [
@@ -77,14 +107,16 @@ class _AddCarScreenState extends State<AddCarScreen> {
   // Method to get address from latitude and longitude
   Future<String> getAddressFromLatLng(double lat, double lng) async {
     print("Getting address for Lat: $lat, Lng: $lng");
-  List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
+    List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
 
-  Placemark place = placemarks[0];
-  print("Obtained address: ${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}");
+    Placemark place = placemarks[0];
+    print(
+      "Obtained address: ${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}",
+    );
 
-  return "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
-}
-  
+    return "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
+  }
+
   // Method to get current location
   Future<void> _getCurrentLocation() async {
     setState(() {
@@ -135,12 +167,15 @@ class _AddCarScreenState extends State<AddCarScreen> {
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      _streetAddress = await getAddressFromLatLng(position.latitude, position.longitude);
+      _streetAddress = await getAddressFromLatLng(
+        position.latitude,
+        position.longitude,
+      );
 
       setState(() {
         carLocation = LatLng(position.latitude, position.longitude);
         _currentPosition = carLocation!;
-        
+
         // Add marker at current location
         _markers.clear();
         _markers.add(
@@ -148,10 +183,12 @@ class _AddCarScreenState extends State<AddCarScreen> {
             markerId: const MarkerId('car_location'),
             position: carLocation!,
             infoWindow: const InfoWindow(title: 'Car Location'),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueRed,
+            ),
           ),
         );
-        
+
         _isLoadingLocation = false;
       });
 
@@ -167,9 +204,9 @@ class _AddCarScreenState extends State<AddCarScreen> {
       setState(() {
         _isLoadingLocation = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error getting location: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
     }
   }
 
@@ -177,17 +214,19 @@ class _AddCarScreenState extends State<AddCarScreen> {
   Future<void> _pickImagesFromGallery() async {
     try {
       final List<XFile> images = await _picker.pickMultiImage();
-      
+
       if (images.isNotEmpty) {
         setState(() {
-          _selectedImages.addAll(images.map((image) => File(image.path)).toList());
+          _selectedImages.addAll(
+            images.map((image) => File(image.path)).toList(),
+          );
         });
       }
     } catch (e) {
       // Handle error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking images: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking images: $e')));
     }
   }
 
@@ -195,16 +234,16 @@ class _AddCarScreenState extends State<AddCarScreen> {
   Future<void> _pickImageFromCamera() async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.camera);
-      
+
       if (image != null) {
         setState(() {
           _selectedImages.add(File(image.path));
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error taking photo: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error taking photo: $e')));
     }
   }
 
@@ -243,15 +282,13 @@ class _AddCarScreenState extends State<AddCarScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.hostBackground,
         elevation: 0,
-        title: Text(
-          'Add Car',
-          style: AppTextStyles.h2(context),
-        ),
+        title: Text('Add Car', style: AppTextStyles.h2(context)),
       ),
       body: SingleChildScrollView(
-        physics: _isInteractingWithMap 
-      ? const NeverScrollableScrollPhysics() 
-      : const AlwaysScrollableScrollPhysics(),
+        physics:
+            _isInteractingWithMap
+                ? const NeverScrollableScrollPhysics()
+                : const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,7 +303,10 @@ class _AddCarScreenState extends State<AddCarScreen> {
             _buildTextField(_contactController, 'Contact'),
             const SizedBox(height: AppSpacing.sm),
             // Car Registration Number
-            _buildTextField(_carRegistrationController, 'Car Registration Number'),
+            _buildTextField(
+              _carRegistrationController,
+              'Car Registration Number',
+            ),
             const SizedBox(height: AppSpacing.md),
             _buildTextField(_rentPerDayController, 'Renting Price per day'),
             const SizedBox(height: AppSpacing.md),
@@ -277,18 +317,18 @@ class _AddCarScreenState extends State<AddCarScreen> {
             // Car information section
             _buildSectionTitle('Car information'),
             const SizedBox(height: AppSpacing.sm),
-            
-            // Car Brand / Car Model tabs
-            _buildSegmentedControl(),
-            const SizedBox(height: AppSpacing.sm),
 
-            // Car Brand selection (when tab 0 is selected)
-            if (_selectedTab == 0) _buildCarBrandSelection(),
+            // Car Brand / Car Model tabs
+            // _buildSegmentedControl(),
+            // const SizedBox(height: AppSpacing.sm),
+            _buildCarType(),
+            const SizedBox(height: AppSpacing.md),
+            _buildCarBrandSelection(),
             const SizedBox(height: AppSpacing.md),
             _buildSectionTitle("Location"),
             const SizedBox(height: AppSpacing.sm),
             _buildLocation(),
-            const SizedBox(height: AppSpacing.md), 
+            const SizedBox(height: AppSpacing.md),
 
             // Image upload area
             _buildImageUploadSection(),
@@ -320,7 +360,6 @@ class _AddCarScreenState extends State<AddCarScreen> {
             // Submit button
             _buildSubmitButton(),
             const SizedBox(height: AppSpacing.lg),
-            
           ],
         ),
       ),
@@ -328,19 +367,17 @@ class _AddCarScreenState extends State<AddCarScreen> {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: AppTextStyles.h2(context),
-    );
+    return Text(title, style: AppTextStyles.h2(context));
   }
 
   Widget _buildTextField(TextEditingController controller, String hint) {
     TextInputType keyboardType = TextInputType.text; // Default
-  
-  if (hint.toLowerCase().contains('renting price per day') || 
-      hint.toLowerCase().contains('contact') || hint.toLowerCase().contains('renting price per hour')) {
-    keyboardType = TextInputType.number;
-  }
+
+    if (hint.toLowerCase().contains('renting price per day') ||
+        hint.toLowerCase().contains('contact') ||
+        hint.toLowerCase().contains('renting price per hour')) {
+      keyboardType = TextInputType.number;
+    }
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -364,6 +401,70 @@ class _AddCarScreenState extends State<AddCarScreen> {
     );
   }
 
+  Widget _buildCarType() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Optional: Add a label here if needed, e.g., Text("Vehicle Type")
+        Container(
+          padding: const EdgeInsets.all(4), // Small padding for inner spacing
+          decoration: BoxDecoration(
+            color: AppColors.hostBackground,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: GridView.builder(
+            padding: EdgeInsets.zero,
+            shrinkWrap:
+                true, // Vital for using GridView inside a Column/ListView
+            physics:
+                const NeverScrollableScrollPhysics(), // Disables internal scrolling
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2, // 2 columns wide
+              childAspectRatio:
+                  5.0, // Adjust this to change button height (higher number = shorter button)
+              crossAxisSpacing: 4, // Horizontal space between buttons
+              mainAxisSpacing: 4, // Vertical space between buttons
+            ),
+            itemCount: _vehicleTypes.length,
+            itemBuilder: (context, index) {
+              final type = _vehicleTypes[index];
+              final isSelected = _selectedVehicleType == type;
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedVehicleType = type;
+                  });
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.accent : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      type,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color:
+                            isSelected
+                                ? AppColors.white
+                                : const Color(0xFF4A4A4A),
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSegmentedControl() {
     return Container(
       decoration: BoxDecoration(
@@ -372,12 +473,8 @@ class _AddCarScreenState extends State<AddCarScreen> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: _buildTabButton(0, 'Car Brand'),
-          ),
-          Expanded(
-            child: _buildTabButton(1, 'Car Model'),
-          ),
+          Expanded(child: _buildTabButton(0, 'Car Brand')),
+          Expanded(child: _buildTabButton(1, 'Car Model')),
         ],
       ),
     );
@@ -420,36 +517,38 @@ class _AddCarScreenState extends State<AddCarScreen> {
           padding: const EdgeInsets.only(bottom: AppSpacing.xs),
           child: Text(
             'Regular Cars Brand',
-            style: AppTextStyles.body(context).copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTextStyles.body(
+              context,
+            ).copyWith(fontWeight: FontWeight.w600),
           ),
         ),
         Wrap(
           spacing: AppSpacing.xs,
           runSpacing: AppSpacing.xs,
-          children: regularBrands.map((brand) {
-            return _buildBrandChip(brand, false);
-          }).toList(),
+          children:
+              regularBrands.map((brand) {
+                return _buildBrandChip(brand, false);
+              }).toList(),
         ),
         const SizedBox(height: AppSpacing.sm),
-        
+
         // Luxury Cars Brand
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.xs),
           child: Text(
             'Luxury Cars Brand',
-            style: AppTextStyles.body(context).copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTextStyles.body(
+              context,
+            ).copyWith(fontWeight: FontWeight.w600),
           ),
         ),
         Wrap(
           spacing: AppSpacing.xs,
           runSpacing: AppSpacing.xs,
-          children: luxuryBrands.map((brand) {
-            return _buildBrandChip(brand, true);
-          }).toList(),
+          children:
+              luxuryBrands.map((brand) {
+                return _buildBrandChip(brand, true);
+              }).toList(),
         ),
       ],
     );
@@ -485,261 +584,267 @@ class _AddCarScreenState extends State<AddCarScreen> {
   }
 
   Widget _buildLocation() {
-  final size = MediaQuery.of(context).size;
-  
-  return Listener(
-    onPointerDown: (_) {
-      setState(() {
-        _isInteractingWithMap = true;
-      });
-    },
-    onPointerUp: (_) {
-      setState(() {
-        _isInteractingWithMap = false;
-      });
-    },
-    child: Container(
-      height: size.height * 0.3,
-      width: size.width,
+    final size = MediaQuery.of(context).size;
+
+    return Listener(
+      onPointerDown: (_) {
+        setState(() {
+          _isInteractingWithMap = true;
+        });
+      },
+      onPointerUp: (_) {
+        setState(() {
+          _isInteractingWithMap = false;
+        });
+      },
+      child: Container(
+        height: size.height * 0.3,
+        width: size.width,
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border.withOpacity(0.2)),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxHeight <= 0 || constraints.maxWidth <= 0) {
+                return const SizedBox.shrink();
+              }
+
+              return Stack(
+                children: [
+                  // Google Map
+                  SizedBox(
+                    height: constraints.maxHeight,
+                    width: constraints.maxWidth,
+                    child: GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: _currentPosition,
+                        zoom: 14,
+                      ),
+                      onMapCreated: (GoogleMapController controller) {
+                        _mapController = controller;
+                      },
+                      markers: _markers,
+                      myLocationEnabled: true,
+                      myLocationButtonEnabled: false,
+                      zoomControlsEnabled: false,
+                      zoomGesturesEnabled: true,
+                      scrollGesturesEnabled: true,
+                      tiltGesturesEnabled: true,
+                      rotateGesturesEnabled: true,
+                      onTap: (LatLng position) {
+                        setState(() {
+                          carLocation = position;
+                          _markers.clear();
+                          _markers.add(
+                            Marker(
+                              markerId: const MarkerId('car_location'),
+                              position: position,
+                              infoWindow: const InfoWindow(
+                                title: 'Car Location',
+                              ),
+                              icon: BitmapDescriptor.defaultMarkerWithHue(
+                                BitmapDescriptor.hueRed,
+                              ),
+                            ),
+                          );
+                        });
+                      },
+                    ),
+                  ),
+
+                  // Current Location Button (Bottom Right)
+                  Positioned(
+                    bottom: 16,
+                    right: 16,
+                    child: Material(
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(28),
+                      child: InkWell(
+                        onTap: _isLoadingLocation ? null : _getCurrentLocation,
+                        borderRadius: BorderRadius.circular(28),
+                        child: Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child:
+                                _isLoadingLocation
+                                    ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.accent,
+                                      ),
+                                    )
+                                    : Icon(
+                                      Icons.my_location,
+                                      color: AppColors.accent,
+                                      size: 24,
+                                    ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Location Info (Top)
+                  if (carLocation != null)
+                    Positioned(
+                      top: 16,
+                      left: 16,
+                      right: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              color: AppColors.accent,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Lat: ${carLocation!.latitude.toStringAsFixed(4)}, '
+                                'Lng: ${carLocation!.longitude.toStringAsFixed(4)}',
+                                style: AppTextStyles.meta(context),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageUploadSection() {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border.withOpacity(0.2)),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxHeight <= 0 || constraints.maxWidth <= 0) {
-              return const SizedBox.shrink();
-            }
-            
-            return Stack(
-              children: [
-                // Google Map
-                SizedBox(
-                  height: constraints.maxHeight,
-                  width: constraints.maxWidth,
-                  child: GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: _currentPosition,
-                      zoom: 14,
-                    ),
-                    onMapCreated: (GoogleMapController controller) {
-                      _mapController = controller;
-                    },
-                    markers: _markers,
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: false,
-                    zoomControlsEnabled: false,
-                    zoomGesturesEnabled: true,
-                    scrollGesturesEnabled: true,
-                    tiltGesturesEnabled: true,
-                    rotateGesturesEnabled: true,
-                    onTap: (LatLng position) {
-                      setState(() {
-                        carLocation = position;
-                        _markers.clear();
-                        _markers.add(
-                          Marker(
-                            markerId: const MarkerId('car_location'),
-                            position: position,
-                            infoWindow: const InfoWindow(title: 'Car Location'),
-                            icon: BitmapDescriptor.defaultMarkerWithHue(
-                              BitmapDescriptor.hueRed,
-                            ),
-                          ),
-                        );
-                      });
-                    },
-                  ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Upload Cars images', style: AppTextStyles.body(context)),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.hostBackground,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                
-                // Current Location Button (Bottom Right)
-                Positioned(
-                  bottom: 16,
-                  right: 16,
-                  child: Material(
-                    elevation: 4,
-                    borderRadius: BorderRadius.circular(28),
-                    child: InkWell(
-                      onTap: _isLoadingLocation ? null : _getCurrentLocation,
-                      borderRadius: BorderRadius.circular(28),
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: _isLoadingLocation
-                              ? SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.accent,
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.my_location,
-                                  color: AppColors.accent,
-                                  size: 24,
-                                ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // Location Info (Top)
-                if (carLocation != null)
-                  Positioned(
-                    top: 16,
-                    left: 16,
-                    right: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm,
-                        vertical: AppSpacing.xs,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            color: AppColors.accent,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Lat: ${carLocation!.latitude.toStringAsFixed(4)}, '
-                              'Lng: ${carLocation!.longitude.toStringAsFixed(4)}',
-                              style: AppTextStyles.meta(context),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
-    ),
-  );
-}
-
-  Widget _buildImageUploadSection() {
-  return Container(
-    padding: const EdgeInsets.all(AppSpacing.sm),
-    decoration: BoxDecoration(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AppColors.border.withOpacity(0.2)),
-    ),
-    child: Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Upload Cars images',
-              style: AppTextStyles.body(context),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.hostBackground,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.camera_alt, color: AppColors.secondaryText),
-                    onPressed: _pickImageFromCamera,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.photo_library, color: AppColors.secondaryText),
-                    onPressed: _pickImagesFromGallery,
-                  ),
-                ],
-              ),
-            )
-          ],
-        ),
-        // Display selected images
-        if (_selectedImages.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.sm),
-          SizedBox(
-            height: 100,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _selectedImages.length,
-              itemBuilder: (context, index) {
-                return Stack(
+                child: Row(
                   children: [
-                    Container(
-                      margin: const EdgeInsets.only(right: AppSpacing.xs),
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        image: DecorationImage(
-                          image: FileImage(_selectedImages[index]),
-                          fit: BoxFit.cover,
-                        ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.camera_alt,
+                        color: AppColors.secondaryText,
                       ),
+                      onPressed: _pickImageFromCamera,
                     ),
-                    Positioned(
-                      top: 4,
-                      right: 8,
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedImages.removeAt(index);
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.photo_library,
+                        color: AppColors.secondaryText,
                       ),
+                      onPressed: _pickImagesFromGallery,
                     ),
                   ],
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
+          // Display selected images
+          if (_selectedImages.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              height: 100,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _selectedImages.length,
+                itemBuilder: (context, index) {
+                  return Stack(
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(right: AppSpacing.xs),
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: FileImage(_selectedImages[index]),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedImages.removeAt(index);
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ],
-      ],
-    ),
-  );
-}
+      ),
+    );
+  }
 
-  Widget _buildDrivingOptionsSection(){
+  Widget _buildDrivingOptionsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -747,127 +852,137 @@ class _AddCarScreenState extends State<AddCarScreen> {
         _buildSectionTitle('Driving Options'),
         const SizedBox(height: AppSpacing.md),
         _buildDrivingOptions(Icons.directions_car, "Self Driving"),
-          const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.sm),
         _buildDrivingOptions(Icons.person, "With Driver"),
-          const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.sm),
       ],
     );
   }
-  
+
   Widget _buildDrivingOptions(IconData icon, String title) {
-  final isSelected = _drivingOptions.contains(title);
-  
-  return GestureDetector(
-    onTap: () {
-      setState(() {
-        if (isSelected) {
-          _drivingOptions.remove(title); // Deselect if already selected
-        } else {
-          _drivingOptions.add(title); // Add to selection
-        }
-      });
-    },
-    child: Container(
-      width: MediaQuery.of( context).size.width*0.9,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        //color: isSelected ? AppColors.accent.withOpacity(0.2) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
-          width: 1.5,
+    final isSelected = _drivingOptions.contains(title);
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isSelected) {
+            _drivingOptions.remove(title); // Deselect if already selected
+          } else {
+            _drivingOptions.add(title); // Add to selection
+          }
+        });
+      },
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          //color: isSelected ? AppColors.accent.withOpacity(0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? AppColors.accent : AppColors.secondaryText,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              title,
+              style: AppTextStyles.body(context).copyWith(
+                color:
+                    isSelected
+                        ? AppColors.primaryText
+                        : AppColors.secondaryText,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: isSelected ? AppColors.accent : AppColors.secondaryText,
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            title,
-            style: AppTextStyles.body(context).copyWith(
-              color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
+    );
+  }
 
-  Widget _buildTransmissionTypeSection(){
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const SizedBox(height: AppSpacing.lg),
-      _buildSectionTitle('Transmission Type'),
-      const SizedBox(height: AppSpacing.md),
-      _buildTransmission(Icons.directions_car, "Manual"),
+  Widget _buildTransmissionTypeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AppSpacing.lg),
+        _buildSectionTitle('Transmission Type'),
+        const SizedBox(height: AppSpacing.md),
+        _buildTransmission(Icons.directions_car, "Manual"),
         const SizedBox(height: AppSpacing.sm),
-      _buildTransmission(Icons.person, "Automatic"),
+        _buildTransmission(Icons.person, "Automatic"),
         const SizedBox(height: AppSpacing.sm),
-    ],
-  );
-}
+      ],
+    );
+  }
 
   Widget _buildTransmission(IconData icon, String title) {
-  final isSelected = _transmissionType == title; // Check if this option is selected
-  
-  return GestureDetector(
-    onTap: () {
-      setState(() {
-        if (isSelected) {
-          _transmissionType = null; // Deselect if already selected
-        } else {
-          _transmissionType = title; // Set as the only selected option
-        }
-      });
-    },
-    child: Container(
-      width: MediaQuery.of(context).size.width * 0.9,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: isSelected ? AppColors.accent.withOpacity(0.2) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
-          width: 1.5,
+    final isSelected =
+        _transmissionType == title; // Check if this option is selected
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isSelected) {
+            _transmissionType = null; // Deselect if already selected
+          } else {
+            _transmissionType = title; // Set as the only selected option
+          }
+        });
+      },
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? AppColors.accent.withOpacity(0.2)
+                  : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? AppColors.accent : AppColors.secondaryText,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              title,
+              style: AppTextStyles.body(context).copyWith(
+                color:
+                    isSelected
+                        ? AppColors.primaryText
+                        : AppColors.secondaryText,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: isSelected ? AppColors.accent : AppColors.secondaryText,
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            title,
-            style: AppTextStyles.body(context).copyWith(
-              color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
+    );
+  }
 
-  Widget _buildFeaturesSection(){
+  Widget _buildFeaturesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -881,20 +996,20 @@ class _AddCarScreenState extends State<AddCarScreen> {
               },
               child: Text(
                 'See All',
-                style: AppTextStyles.body(context).copyWith(
-                  color: AppColors.accent,
-                ),
+                style: AppTextStyles.body(
+                  context,
+                ).copyWith(color: AppColors.accent),
               ),
             ),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
         _buildFeatures(Icons.ac_unit, "Air Conditioning"),
-          const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.sm),
         _buildFeatures(Icons.map, "GPS Navigation"),
-          const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.sm),
         _buildFeatures(Icons.bluetooth, "Bluetooth"),
-          const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.sm),
         _buildFeatures(Icons.wifi, "Wi-Fi"),
         const SizedBox(height: AppSpacing.sm),
         _buildFeatures(Icons.speed, "Cruise Control"),
@@ -918,51 +1033,60 @@ class _AddCarScreenState extends State<AddCarScreen> {
               },
               child: Text(
                 'See All',
-                style: AppTextStyles.body(context).copyWith(
-                  color: AppColors.accent,
-                ),
+                style: AppTextStyles.body(
+                  context,
+                ).copyWith(color: AppColors.accent),
               ),
             ),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
         Row(
-          children: colors.map((colorData) {
-            final isSelected = _selectedColor == colorData['name'];
-            return Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedColor = colorData['name'];
-                  });
-                },
-                child: Column(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: colorData['color'],
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected ? AppColors.accent : Colors.grey.shade300,
-                          width: isSelected ? 3 : 1,
+          children:
+              colors.map((colorData) {
+                final isSelected = _selectedColor == colorData['name'];
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedColor = colorData['name'];
+                      });
+                    },
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: colorData['color'],
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color:
+                                  isSelected
+                                      ? AppColors.accent
+                                      : Colors.grey.shade300,
+                              width: isSelected ? 3 : 1,
+                            ),
+                          ),
+                          child:
+                              isSelected
+                                  ? const Icon(
+                                    Icons.check,
+                                    color: AppColors.white,
+                                    size: 24,
+                                  )
+                                  : null,
                         ),
-                      ),
-                      child: isSelected
-                          ? const Icon(Icons.check, color: AppColors.white, size: 24)
-                          : null,
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          colorData['name'],
+                          style: AppTextStyles.meta(context),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      colorData['name'],
-                      style: AppTextStyles.meta(context),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
+                  ),
+                );
+              }).toList(),
         ),
       ],
     );
@@ -977,88 +1101,95 @@ class _AddCarScreenState extends State<AddCarScreen> {
         Wrap(
           spacing: AppSpacing.xs,
           runSpacing: AppSpacing.xs,
-          children: fuelTypes.map((fuelType) {
-            final isSelected = _selectedFuelType == fuelType;
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedFuelType = fuelType;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.accent : AppColors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.border.withOpacity(0.2),
+          children:
+              fuelTypes.map((fuelType) {
+                final isSelected = _selectedFuelType == fuelType;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedFuelType = fuelType;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.accent : AppColors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.border.withOpacity(0.2),
+                      ),
+                    ),
+                    child: Text(
+                      fuelType,
+                      style: AppTextStyles.body(context).copyWith(
+                        color:
+                            isSelected
+                                ? AppColors.white
+                                : AppColors.primaryText,
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  fuelType,
-                  style: AppTextStyles.body(context).copyWith(
-                    color: isSelected ? AppColors.white : AppColors.primaryText,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
+                );
+              }).toList(),
         ),
       ],
     );
   }
 
   Widget _buildFeatures(IconData icon, String title) {
-  final isSelected = _selectedFeatures.contains(title);
-  
-  return GestureDetector(
-    onTap: () {
-      setState(() {
-        if (isSelected) {
-          _selectedFeatures.remove(title); // Deselect if already selected
-        } else {
-          _selectedFeatures.add(title); // Add to selection
-        }
-      });
-    },
-    child: Container(
-      width: MediaQuery.of(context).size.width * 0.9,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        //color: isSelected ? AppColors.accent.withOpacity(0.2) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
-          width: 1.5,
+    final isSelected = _selectedFeatures.contains(title);
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isSelected) {
+            _selectedFeatures.remove(title); // Deselect if already selected
+          } else {
+            _selectedFeatures.add(title); // Add to selection
+          }
+        });
+      },
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          //color: isSelected ? AppColors.accent.withOpacity(0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? AppColors.accent : AppColors.secondaryText,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              title,
+              style: AppTextStyles.body(context).copyWith(
+                color:
+                    isSelected
+                        ? AppColors.primaryText
+                        : AppColors.secondaryText,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: isSelected ? AppColors.accent : AppColors.secondaryText,
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            title,
-            style: AppTextStyles.body(context).copyWith(
-              color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildCarAbilityTextArea() {
     return Container(
@@ -1072,7 +1203,8 @@ class _AddCarScreenState extends State<AddCarScreen> {
         maxLines: 5,
         maxLength: _maxCharacters,
         decoration: InputDecoration(
-          hintText: 'Enter your car ability , durability ,etc message here.........',
+          hintText:
+              'Enter your car ability , durability ,etc message here.........',
           hintStyle: AppTextStyles.meta(context),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(AppSpacing.sm),
@@ -1105,10 +1237,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
             },
             child: Row(
               children: [
-                Text(
-                  'Ts & continue',
-                  style: AppTextStyles.body(context),
-                ),
+                Text('Ts & continue', style: AppTextStyles.body(context)),
                 const SizedBox(width: AppSpacing.xs),
                 const Icon(
                   Icons.keyboard_arrow_down,
@@ -1136,19 +1265,17 @@ class _AddCarScreenState extends State<AddCarScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        child: _isSubmitting
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Text(
-                'Submit',
-                style: AppTextStyles.button(context),
-              ),
+        child:
+            _isSubmitting
+                ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+                : Text('Submit', style: AppTextStyles.button(context)),
       ),
     );
   }
@@ -1159,7 +1286,8 @@ class _AddCarScreenState extends State<AddCarScreen> {
         _emailController.text.isEmpty ||
         _contactController.text.isEmpty ||
         _carRegistrationController.text.isEmpty ||
-        _selectedBrand == null || _transmissionType == null) {
+        _selectedBrand == null ||
+        _transmissionType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in all required fields'),
@@ -1249,19 +1377,15 @@ class _AddCarScreenState extends State<AddCarScreen> {
 
     try {
       // Upload images to Firebase Storage
-      
+
       List<String> imageUrls = await _uploadImages(currentUser.uid);
       print(imageUrls);
 
       // Create vehicle document in Firestore
-      final vehicleRef = await _saveVehicleData(
-        currentUser.uid,
-        imageUrls,
-      );
+      final vehicleRef = await _saveVehicleData(currentUser.uid, imageUrls);
       final user = FirebaseAuth.instance.currentUser;
       print("AUTH UID: ${user?.uid}");
       print("PASSED userId: ${currentUser.uid}");
-
 
       // Create damage_pool document (one-to-one with vehicle)
       await _createDamagePool(vehicleRef.id);
@@ -1272,20 +1396,19 @@ class _AddCarScreenState extends State<AddCarScreen> {
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(
+          SnackBar(
             content: Text('Car added successfully!'),
             duration: Duration(seconds: 2),
             backgroundColor: Colors.green.withOpacity(0.8),
           ),
         );
-        
+
         // Navigate back after successful submission
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => HostNavigation()),
           (route) => false,
         );
-
       }
     } catch (e) {
       if (mounted) {
@@ -1309,16 +1432,17 @@ class _AddCarScreenState extends State<AddCarScreen> {
   /// Upload images to Firebase Storage and return their URLs
   Future<List<String>> _uploadImages(String userId) async {
     List<String> imageUrls = [];
-    
+
     for (int i = 0; i < _selectedImages.length; i++) {
       final imageFile = _selectedImages[i];
-      final fileName = 'vehicle_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+      final fileName =
+          'vehicle_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
       final storageRef = _storage.ref().child('vehicles/$userId/$fileName');
       // print("Uploading image ${i + 1}/${_selectedImages.length}");
       // print(imageFile);
       // print(fileName);
       // print(storageRef.fullPath);
-      
+
       try {
         await storageRef.putFile(imageFile);
         final downloadUrl = await storageRef.getDownloadURL();
@@ -1329,28 +1453,29 @@ class _AddCarScreenState extends State<AddCarScreen> {
       }
     }
     //print("images uploaded: $imageUrls");
-    
+
     return imageUrls;
   }
 
   /// Save vehicle data to Firestore
   Future<DocumentReference> _saveVehicleData(
-    String ownerId, List<String> imageUrls,
+    String ownerId,
+    List<String> imageUrls,
   ) async {
     // Determine driving_options based on user selection
     String drivingOptions;
-    if (_drivingOptions.contains('Self Driving') && _drivingOptions.contains('With Driver')) {
+    if (_drivingOptions.contains('Self Driving') &&
+        _drivingOptions.contains('With Driver')) {
       drivingOptions = 'Both';
     } else if (_drivingOptions.contains('Self Driving')) {
       drivingOptions = 'Self Driving';
     } else if (_drivingOptions.contains('With Driver')) {
       drivingOptions = 'With Driver';
     } else {
-      // Default to empty if nothing selected (though this shouldn't happen if validation is in place)
       drivingOptions = '';
     }
 
-    // Parse rent per day (convert to double)
+    // Parse rent per day
     double rentPerDay = 0.0;
     if (_rentPerDayController.text.trim().isNotEmpty) {
       rentPerDay = double.tryParse(_rentPerDayController.text.trim()) ?? 0.0;
@@ -1362,35 +1487,38 @@ class _AddCarScreenState extends State<AddCarScreen> {
 
     final vehicleData = {
       'owner_id': ownerId,
+      'vehicle_type': _selectedVehicleType, // <--- Added here
       'make': _selectedBrand ?? '',
-      'model': '', // Add model field later if needed
-      'year': DateTime.now().year, // Default to current year, can be added to form later
+      'model': '',
+      'year': DateTime.now().year,
       'images': imageUrls,
       'features': _selectedFeatures.toList(),
       'registration_number': _carRegistrationController.text.trim(),
-      'market_value': 0, // Add market_value field to form later
-      'self_drive_allowed': true, // Add this option to form later
-      'with_driver_only': false, // Add this option to form later
-      'driving_options': drivingOptions, // Save driving options
-      'rent_per_day': rentPerDay, // Save rent per day
-      'rent_per_hour': rentPerHour, // Save rent per hour
+      'market_value': 0,
+      'self_drive_allowed': true,
+      'with_driver_only': false,
+      'driving_options': drivingOptions,
+      'rent_per_day': rentPerDay,
+      'rent_per_hour': rentPerHour,
       'created_at': FieldValue.serverTimestamp(),
       'recorded_damages': [],
       'location': {
         'latitude': carLocation!.latitude,
         'longitude': carLocation!.longitude,
       },
-      'transmissionType': _transmissionType ?? 'Not specified', 
+      'transmissionType': _transmissionType ?? 'Not specified',
       'color': _selectedColor,
       'fuel_type': _selectedFuelType,
       'description': _carAbilityController.text.trim(),
-      // Owner information stored with vehicle
       'car_name': _fullNameController.text.trim(),
       'owner_email': _emailController.text.trim(),
       'owner_contact': _contactController.text.trim(),
       'street_address': _streetAddress ?? '',
     };
 
+    // Return your collection reference call here, e.g.:
+    // return FirebaseFirestore.instance.collection('vehicles').add(vehicleData);
+    // (Assuming you handle the actual Firestore call outside or at the end of this block)
     final vehicleRef = await _firestore.collection('vehicles').add(vehicleData);
     return vehicleRef;
   }
@@ -1405,21 +1533,22 @@ class _AddCarScreenState extends State<AddCarScreen> {
       'created_at': FieldValue.serverTimestamp(),
     };
 
-    await _firestore.collection('damage_pools').doc(vehicleId).set(damagePoolData);
+    await _firestore
+        .collection('damage_pools')
+        .doc(vehicleId)
+        .set(damagePoolData);
   }
 
   /// Update owner's vehicle count
   Future<void> _updateOwnerVehicleCount(String ownerId) async {
     final ownerRef = _firestore.collection('users').doc(ownerId);
-    
+
     await _firestore.runTransaction((transaction) async {
       final ownerDoc = await transaction.get(ownerRef);
-      
+
       if (ownerDoc.exists) {
         final currentCount = ownerDoc.data()?['no_of_vehicles'] ?? 0;
-        transaction.update(ownerRef, {
-          'no_of_vehicles': currentCount + 1,
-        });
+        transaction.update(ownerRef, {'no_of_vehicles': currentCount + 1});
       } else {
         // Create owner document if it doesn't exist
         transaction.set(ownerRef, {

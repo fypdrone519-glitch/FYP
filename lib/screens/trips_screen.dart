@@ -437,6 +437,9 @@ class _TripsScreenState extends State<TripsScreen>
 
     setState(() => _isCancelling = true);
     try {
+      // Determine who is canceling
+      final canceledBy = _viewAsHost ? 'by host' : 'by renter';
+      
       // Update booking status to Cancelled
       await FirebaseFirestore.instance
           .collection('bookings')
@@ -445,6 +448,7 @@ class _TripsScreenState extends State<TripsScreen>
             'status': 'Cancelled',
             'cancelled_at': FieldValue.serverTimestamp(),
             'cancelled_by': user.uid,
+            'canceled_by': canceledBy, // New field to track who canceled
           });
 
       // Restore the blocked dates back to availability
@@ -1125,10 +1129,31 @@ class _TripsScreenState extends State<TripsScreen>
     final isStartDayOrAfter = !isBeforeStartDay;
     final canStartTripBase =
         !_viewAsHost && isUpcoming && _isApproved(booking) && !isTripStarted;
-    final showStartTripButton = canStartTripBase;
+    final showStartTripButton = canStartTripBase && isStartDayOrAfter;
     final enableStartTripButton = canStartTripBase && isStartDayOrAfter;
-    final showStartTripOnlyButton = canStartTripBase;
-    final showCancelOnlyButton = !_viewAsHost && isUpcoming && isTripStarted;
+    
+    // RENTER: Show cancel button when waiting for approval OR when approved but not started
+    final showCancelButtonRenter = !_viewAsHost && isUpcoming && !isTripStarted;
+    
+    // HOST: Show cancel button after approval but before trip starts
+    final showCancelButtonHost = _viewAsHost && isUpcoming && _isApproved(booking) && !isTripStarted;
+    
+    // Combined cancel button logic
+    final showCancelButton = showCancelButtonRenter || showCancelButtonHost;
+    
+    // Only show cancel button alone if before start day (for renter with approved booking)
+    final showCancelOnlyButton = showCancelButtonRenter && isBeforeStartDay && _isApproved(booking);
+    
+    // Show cancel only for renter waiting for approval
+    final showCancelOnlyButtonWaiting = !_viewAsHost && _isWaitingForApproval(booking);
+    
+    // Show cancel only for host after approval before start
+    final showCancelOnlyButtonHost = showCancelButtonHost && isBeforeStartDay;
+    
+    // Show start trip button only (no cancel) - never used now
+    final showStartTripOnlyButton = false;
+    
+    final showCancelDuringTrip = !_viewAsHost && isUpcoming && isTripStarted;
     final showEndTripOnlyButtonForHost =
         _viewAsHost && isUpcoming && isTripStarted && isEndDay;
     final showEndTripOnlyButtonForRenter =
@@ -1171,12 +1196,12 @@ class _TripsScreenState extends State<TripsScreen>
           showWaitingLabel: !_viewAsHost && _isWaitingForApproval(booking),
           // Host sees Approve button when waiting; after approved, show Cancel/Modify row.
           showApproveButton: _viewAsHost && _isWaitingForApproval(booking),
-          showApprovedWaitingBadge: _viewAsHost && _isApproved(booking),
+          showApprovedWaitingBadge: _viewAsHost && _isApproved(booking) && !isTripStarted,
           showStartTripButton: showStartTripButton,
           showTripStartedLabel: false,
           showStartTripOnlyButton: showStartTripOnlyButton,
           showCancelOnlyButton:
-              showEndTripOnlyButtonForRenter ? false : showCancelOnlyButton,
+              showEndTripOnlyButtonForRenter ? false : (showCancelOnlyButton || showCancelOnlyButtonWaiting || showCancelOnlyButtonHost || showCancelDuringTrip),
           showEndTripOnlyButton:
               (showEndTripOnlyButtonForHost && !hostAlreadyConfirmed) ||
               (showEndTripOnlyButtonForRenter && !renterAlreadyConfirmed),
@@ -1190,7 +1215,7 @@ class _TripsScreenState extends State<TripsScreen>
                   ? () async => _approveBooking(bookingId)
                   : null,
           onCancel:
-              isUpcoming
+              (showCancelButton || showCancelDuringTrip)
                   ? () async {
                     await _cancelBooking(bookingId);
                   }
@@ -1502,39 +1527,68 @@ class _TripsScreenState extends State<TripsScreen>
                   ),
                 ] else ...[
                   if (showStartTripButton || showTripStartedLabel) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: showStartTripButton ? onStartTrip : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accent,
-                          foregroundColor: AppColors.lightText,
-                          disabledBackgroundColor: Colors.grey[300],
-                          disabledForegroundColor: Colors.grey[600],
-                          elevation: 0,
-                          padding: EdgeInsets.symmetric(
-                            vertical: screenHeight * 0.015,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
+                    // Show Start Trip and Cancel buttons in a row when on/after start date
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _isCancelling ? null : onCancel,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black,
+                              elevation: 0,
+                              padding: EdgeInsets.symmetric(
+                                vertical: screenHeight * 0.015,
+                              ),
+                              side: BorderSide(color: Colors.grey[300]!),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                            child: Text(
+                              _isCancelling ? 'Cancelling...' : 'Cancel',
+                              style: TextStyle(
+                                fontSize: screenHeight * 0.016,
+                                color: Colors.black,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
-                        child: Text(
-                          showTripStartedLabel ? 'Trip Started' : 'Start Trip',
-                          style: TextStyle(
-                            fontSize: screenHeight * 0.016,
-                            color:
-                                showStartTripButton && onStartTrip == null
-                                    ? Colors.grey[600]
-                                    : AppColors.lightText,
-                            fontWeight: FontWeight.w600,
+                        SizedBox(width: screenWidth * 0.03),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: showStartTripButton ? onStartTrip : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.accent,
+                              foregroundColor: AppColors.lightText,
+                              disabledBackgroundColor: Colors.grey[300],
+                              disabledForegroundColor: Colors.grey[600],
+                              elevation: 0,
+                              padding: EdgeInsets.symmetric(
+                                vertical: screenHeight * 0.015,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                            child: Text(
+                              showTripStartedLabel ? 'Trip Started' : 'Start Trip',
+                              style: TextStyle(
+                                fontSize: screenHeight * 0.016,
+                                color:
+                                    showStartTripButton && onStartTrip == null
+                                        ? Colors.grey[600]
+                                        : AppColors.lightText,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                    SizedBox(height: screenHeight * 0.012),
                   ],
-                  if (!showStartTripOnlyButton)
+                  if (!showStartTripOnlyButton && !showStartTripButton)
                     Row(
                       children: [
                         Expanded(

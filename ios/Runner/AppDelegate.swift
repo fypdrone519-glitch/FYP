@@ -44,7 +44,7 @@ import GoogleMaps
     // Set APNs token for Firebase Messaging (required for FCM on iOS)
     Messaging.messaging().apnsToken = deviceToken
     
-    // Set APNs token for Firebase Auth (required for phone auth)
+      // Set APNs token for Firebase Auth (required for phone auth)
     #if DEBUG
     Auth.auth().setAPNSToken(deviceToken, type: .sandbox)
     #else
