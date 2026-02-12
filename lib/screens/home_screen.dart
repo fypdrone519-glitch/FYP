@@ -9,6 +9,7 @@ import '../theme/app_spacing.dart';
 import '../widgets/car_card.dart';
 import '../widgets/car_filter_bottom_sheet.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreenContent extends StatefulWidget {
   const HomeScreenContent({super.key});
@@ -20,6 +21,7 @@ class HomeScreenContent extends StatefulWidget {
 class _HomeScreenContentState extends State<HomeScreenContent> {
   List<Car> _cars = [];
   List<Car> _allCars = []; // Store all cars for filtering
+  List<String> _recommendedVehicleIds = [];
   bool _isLoading = true;
   CarFilterModel _filters = CarFilterModel();
   
@@ -46,6 +48,8 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
 
   Future<void> _loadCars() async {
     try {
+      final List<String> recommendedIds = await _loadRecommendedVehicleIds();
+
       final QuerySnapshot vehiclesSnapshot = await _firestore
           .collection('vehicles')
           .get();
@@ -118,9 +122,12 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
         );
       }).toList();
 
+      final List<Car> orderedCars = _orderCarsByRecommendation(cars, recommendedIds);
+
       setState(() {
-        _allCars = cars;
-        _cars = _applyFilters(cars, _filters);
+        _recommendedVehicleIds = recommendedIds;
+        _allCars = orderedCars;
+        _cars = _applyFilters(orderedCars, _filters);
         _isLoading = false;
       });
     } catch (e) {
@@ -133,6 +140,58 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
         );
       }
     }
+  }
+
+  Future<List<String>> _loadRecommendedVehicleIds() async {
+    final String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      return [];
+    }
+
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('user_recommendation')
+          .doc('summary')
+          .get();
+
+      if (!doc.exists) {
+        return [];
+      }
+
+      final data = doc.data();
+      if (data == null || data['car_ids'] is! List) {
+        return [];
+      }
+
+      return List<String>.from(data['car_ids'] as List).where((id) => id.isNotEmpty).toList();
+    } catch (e) {
+      print('Error loading recommendations: $e');
+      return [];
+    }
+  }
+
+  List<Car> _orderCarsByRecommendation(List<Car> cars, List<String> recommendedIds) {
+    if (recommendedIds.isEmpty) {
+      return cars;
+    }
+
+    final Map<String, Car> carById = {for (final car in cars) car.id: car};
+    final Set<String> used = {};
+    final List<Car> recommendedCars = [];
+
+    // Preserve exact recommendation ranking order from Firestore cache.
+    for (final id in recommendedIds) {
+      final car = carById[id];
+      if (car != null && !used.contains(id)) {
+        recommendedCars.add(car);
+        used.add(id);
+      }
+    }
+
+    final List<Car> normalCars = cars.where((car) => !used.contains(car.id)).toList();
+    return [...recommendedCars, ...normalCars];
   }
 
   List<Car> _applyFilters(List<Car> cars, CarFilterModel filters) {
@@ -548,6 +607,20 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                           ),
                         ),
                       ),
+                      if (_recommendedVehicleIds.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: AppSpacing.xs,
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Recommended cars are shown first',
+                              style: AppTextStyles.meta(context),
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: AppSpacing.sm),
 
                       // Scrollable Car Cards List

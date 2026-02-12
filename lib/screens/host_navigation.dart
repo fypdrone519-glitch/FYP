@@ -1,6 +1,7 @@
 import 'package:car_listing_app/screens/host/host_home_screen.dart';
 import 'package:car_listing_app/screens/host/add_car.dart';
 import 'package:car_listing_app/screens/host/host_profile_screen.dart';
+import 'package:car_listing_app/screens/inbox_screen.dart';
 import 'package:car_listing_app/screens/trips_screen.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
@@ -136,18 +137,6 @@ class InsightsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(child: Text('Insights Screen - Coming Soon')),
-    );
-  }
-}
-
-
-class InboxScreen extends StatelessWidget {
-  const InboxScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Inbox Screen - Coming Soon')),
     );
   }
 }

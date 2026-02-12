@@ -35,252 +35,262 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: AppColors.cardSurface,
       body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: screenHeight * 0.02),
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: screenHeight - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom,
+            ),
+            child: IntrinsicHeight(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: screenHeight * 0.02),
 
-              IconButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-                  );
-                },
-                icon: const Icon(Icons.arrow_back),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-
-              SizedBox(height: screenHeight * 0.04),
-
-              Text(
-                'Let\'s Sign you in.',
-                style: TextStyle(
-                  fontSize: screenHeight * 0.036,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-
-              SizedBox(height: screenHeight * 0.015),
-
-              Text(
-                'Welcome back',
-                style: TextStyle(
-                  fontSize: screenHeight * 0.022,
-                  color: Colors.grey[600],
-                ),
-              ),
-              Text(
-                'You\'ve been missed!',
-                style: TextStyle(
-                  fontSize: screenHeight * 0.022,
-                  color: Colors.grey[600],
-                ),
-              ),
-
-              SizedBox(height: screenHeight * 0.05),
-
-              TextField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  hintText: 'Email, phone or username',
-                  hintStyle: AppTextStyles.meta(context),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-
-              SizedBox(height: screenHeight * 0.02),
-
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  hintText: 'Password',
-                  hintStyle: AppTextStyles.meta(context),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                    ),
-                    onPressed: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
-                  ),
-                ),
-              ),
-
-              const Spacer(),
-              // LOGIN BUTTON
-              SizedBox(
-                width: double.infinity,
-                height: screenHeight * 0.07,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      final result = await FirebaseAuth.instance
-                          .signInWithEmailAndPassword(
-                            email: _emailController.text.trim(),
-                            password: _passwordController.text.trim(),
-                          );
-
-                      if (result.user != null) {
+                    IconButton(
+                      onPressed: () {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const MainNavigation(),
-                          ),
+                          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
                         );
-                      }
-                    } catch (e) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.lightText,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(27),
+                      },
+                      icon: const Icon(Icons.arrow_back),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                  ),
-                  child: const Text("Login", style: TextStyle(fontSize: 16)),
-                ),
-              ),
 
-              SizedBox(height: screenHeight * 0.02),
-              // GOOGLE LOGIN BUTTON 
-               // login in with phone button
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: AppColors.accent),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(27),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PhoneLoginScreen(),
-                      ),
-                    );
-                  },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Icon(
-                          Icons.phone,
-                          size: screenHeight * 0.025,
-                          color: AppColors.accent,
-                        ),
-                      ),
-                      Center(
-                        child: Text("Continue with Phone", style: TextStyle(fontSize: 14)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+                    SizedBox(height: screenHeight * 0.04),
 
-              SizedBox(height: screenHeight * 0.025),
-              // login in with Google button
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: AppColors.accent),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(27),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  ),
-                  onPressed: () {
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //     builder: (_) => const PhoneLoginScreen(),
-                    //   ),
-                    // );
-                  },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: SvgPicture.asset(
-                        'lib/assets/google.svg',
-                        height: 30,
-                        width: 30,
-                      ),
-                      ),
-                      Center(
-                        child: Text("Continue with Google", style: TextStyle(fontSize: 14)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              SizedBox(height: screenHeight * 0.025),
-
-              // REGISTER LINK — restored
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
                     Text(
-                      'Don\'t have an account? ',
+                      'Let\'s Sign you in.',
                       style: TextStyle(
-                        fontSize: screenHeight * 0.018,
+                        fontSize: screenHeight * 0.036,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+
+                    SizedBox(height: screenHeight * 0.015),
+
+                    Text(
+                      'Welcome back',
+                      style: TextStyle(
+                        fontSize: screenHeight * 0.022,
                         color: Colors.grey[600],
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SignUpScreen(),
-                          ),
-                        );
-                      },
-                      child: Text(
-                        'Register',
-                        style: TextStyle(
-                          fontSize: screenHeight * 0.018,
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.bold,
+                    Text(
+                      'You\'ve been missed!',
+                      style: TextStyle(
+                        fontSize: screenHeight * 0.022,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+
+                    SizedBox(height: screenHeight * 0.05),
+
+                    TextField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        hintText: 'Email, phone or username',
+                        hintStyle: AppTextStyles.meta(context),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
                         ),
                       ),
                     ),
+
+                    SizedBox(height: screenHeight * 0.02),
+
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        hintText: 'Password',
+                        hintStyle: AppTextStyles.meta(context),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () {
+                            setState(() => _obscurePassword = !_obscurePassword);
+                          },
+                        ),
+                      ),
+                    ),
+
+                    //const Spacer(),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.05),
+                    // LOGIN BUTTON
+                    SizedBox(
+                      width: double.infinity,
+                      height: screenHeight * 0.07,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            final result = await FirebaseAuth.instance
+                                .signInWithEmailAndPassword(
+                                  email: _emailController.text.trim(),
+                                  password: _passwordController.text.trim(),
+                                );
+
+                            if (result.user != null) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const MainNavigation(),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(e.toString())));
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: AppColors.lightText,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(27),
+                          ),
+                        ),
+                        child: const Text("Login", style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+
+                    SizedBox(height: screenHeight * 0.02),
+                    // GOOGLE LOGIN BUTTON 
+                     // login in with phone button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: AppColors.accent),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(27),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PhoneLoginScreen(),
+                            ),
+                          );
+                        },
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Icon(
+                                Icons.phone,
+                                size: screenHeight * 0.025,
+                                color: AppColors.accent,
+                              ),
+                            ),
+                            Center(
+                              child: Text("Continue with Phone", style: TextStyle(fontSize: 14)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: screenHeight * 0.025),
+                    // login in with Google button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: AppColors.accent),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(27),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        ),
+                        onPressed: () {
+                          // Navigator.push(
+                          //   context,
+                          //   MaterialPageRoute(
+                          //     builder: (_) => const PhoneLoginScreen(),
+                          //   ),
+                          // );
+                        },
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: SvgPicture.asset(
+                              'lib/assets/google.svg',
+                              height: 30,
+                              width: 30,
+                            ),
+                            ),
+                            Center(
+                              child: Text("Continue with Google", style: TextStyle(fontSize: 14)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: screenHeight * 0.025),
+
+                    // REGISTER LINK — restored
+                    Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Don\'t have an account? ',
+                            style: TextStyle(
+                              fontSize: screenHeight * 0.018,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SignUpScreen(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'Register',
+                              style: TextStyle(
+                                fontSize: screenHeight * 0.018,
+                                color: AppColors.accent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: screenHeight * 0.03),
                   ],
                 ),
               ),
-
-              SizedBox(height: screenHeight * 0.03),
-            ],
+            ),
           ),
         ),
       ),

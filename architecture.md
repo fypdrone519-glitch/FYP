@@ -244,6 +244,91 @@ host_earning: 900
   - `lib/screens/notifications_screen.dart` - Notification center
 - **Models:** `lib/models/notification_model.dart`
 
+## Personalization & Recommendations
+
+### User Behaviour Tracking
+
+Intent-level behavior is tracked through callable Cloud Functions:
+- `logVehicleView({ vehicleId })`
+- `logVehicleBooking({ vehicleId })`
+
+**Storage path:**
+- `users/{userId}/user_behaviour/summary`
+
+**Stored counters:**
+- `category_views.{categoryKey}`
+- `price_range_views.{bucketKey}`
+- `category_bookings.{categoryKey}`
+- `price_range_bookings.{bucketKey}`
+- `last_updated`
+
+**Atomicity guarantees:**
+- Uses `FieldValue.increment(...)` for counters
+- Uses `set(..., { merge: true })` to avoid full-object overwrite
+
+**Signal weights currently implemented:**
+- View: `+1` to category and price-range view counters
+- Booking: `+3` to category and price-range view counters
+- Booking: `+1` to category and price-range booking counters
+
+**Bucket logic:**
+- Price bucket size: `5000`
+- Formula: `lower = floor(price / 5000) * 5000`, `upper = lower + 5000`, key = `${lower}_${upper}`
+
+### Recommendation Computation
+
+Recommendations are computed from:
+1. `users/{userId}/user_behaviour/summary`
+2. Candidate vehicles from `vehicles` collection (limit 100)
+
+**Score formula per vehicle:**
+- `category_match = category_views[vehicleCategory] + 1 * category_bookings[vehicleCategory]`
+- `price_match = price_range_views[vehicleBucket] + 1 * price_range_bookings[vehicleBucket]`
+- `score = category_match * 1 + price_match * 1`
+
+**Ranking:**
+- Sort by score descending
+- Tie-break by vehicle ID ascending
+- Top 10 are selected
+
+### Recommendation Cache
+
+**Cache path:**
+- `users/{userId}/user_recommendation/summary`
+
+**Cache shape:**
+```json
+{
+  "car_ids": ["car1", "car2", "car3"],
+  "generated_at": "timestamp",
+  "version": 1
+}
+```
+
+### Recompute Triggering Model
+
+Uses separate async queue pattern:
+- Behavior functions enqueue jobs into `recommendation_jobs/{jobId}`
+- Firestore trigger `processRecommendationJob` recomputes and updates cache
+
+Also available on-demand:
+- Callable `computeRecommendedCars({ userId })`
+- Response:
+```json
+{
+  "recommended_vehicle_ids": ["car1", "car2", "car3"],
+  "generated_at": "ISO timestamp"
+}
+```
+
+### Related Files
+
+- `functions/src/analytics/logVehicleBehavior.ts`
+- `functions/src/recommendations/computeRecommendedCars.ts`
+- `lib/services/user_behavior_service.dart`
+- `USER_BEHAVIOUR.md`
+- `USER_RECOMMENDATION.md`
+
 ## Out of Scope (MVP)
 
 The following features are **explicitly not implemented** in this version:

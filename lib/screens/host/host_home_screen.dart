@@ -93,6 +93,7 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
       final List<Car> cars =
           vehiclesSnapshot.docs.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
+            print(data); // Log the complete data for debugging
 
             _vehicleDataList.add({
               'id': doc.id,
@@ -121,6 +122,9 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
                 print('Resolved address: $address');
               });
             }
+
+            String vehicleType = data['vehicle_type'] ?? 'Unknown';
+            //print('Loaded vehicle type: $vehicleType');
 
             // Get rent per day
             double rentPerDay = 0.0;

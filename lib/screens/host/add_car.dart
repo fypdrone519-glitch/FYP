@@ -48,13 +48,13 @@ class _AddCarScreenState extends State<AddCarScreen> {
   String? _transmissionType;
   Set<String> _drivingOptions = {};
   Set<String> _selectedFeatures = {}; // to store selected features
-  int _selectedTab = 0; // 0 = Car Brand, 1 = Car Model
+  //int _selectedTab = 0; // 0 = Car Brand, 1 = Car Model
   String? _selectedBrand;
   String? _selectedColor;
   String? _selectedFuelType;
   bool _termsAccepted = false;
   int _characterCount = 0;
-  final int _maxCharacters = 1000;
+  //final int _maxCharacters = 1000;
   //varibale to store the location of the car
   LatLng? carLocation;
   GoogleMapController? _mapController;
@@ -465,48 +465,48 @@ class _AddCarScreenState extends State<AddCarScreen> {
     );
   }
 
-  Widget _buildSegmentedControl() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.hostBackground, // Light gray background
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _buildTabButton(0, 'Car Brand')),
-          Expanded(child: _buildTabButton(1, 'Car Model')),
-        ],
-      ),
-    );
-  }
+  // Widget _buildSegmentedControl() {
+  //   return Container(
+  //     decoration: BoxDecoration(
+  //       color: AppColors.hostBackground, // Light gray background
+  //       borderRadius: BorderRadius.circular(8),
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         Expanded(child: _buildTabButton(0, 'Car Brand')),
+  //         Expanded(child: _buildTabButton(1, 'Car Model')),
+  //       ],
+  //     ),
+  //   );
+  // }
 
-  Widget _buildTabButton(int index, String label) {
-    final isSelected = _selectedTab == index;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedTab = index;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.accent : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? AppColors.white : const Color(0xFF4A4A4A),
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  // Widget _buildTabButton(int index, String label) {
+  //   final isSelected = _selectedTab == index;
+  //   return GestureDetector(
+  //     onTap: () {
+  //       setState(() {
+  //         _selectedTab = index;
+  //       });
+  //     },
+  //     child: Container(
+  //       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+  //       decoration: BoxDecoration(
+  //         color: isSelected ? AppColors.accent : Colors.transparent,
+  //         borderRadius: BorderRadius.circular(8),
+  //       ),
+  //       child: Center(
+  //         child: Text(
+  //           label,
+  //           style: TextStyle(
+  //             color: isSelected ? AppColors.white : const Color(0xFF4A4A4A),
+  //             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+  //             fontSize: 14,
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildCarBrandSelection() {
     return Column(
@@ -1191,30 +1191,30 @@ class _AddCarScreenState extends State<AddCarScreen> {
     );
   }
 
-  Widget _buildCarAbilityTextArea() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border.withOpacity(0.2)),
-      ),
-      child: TextField(
-        controller: _carAbilityController,
-        maxLines: 5,
-        maxLength: _maxCharacters,
-        decoration: InputDecoration(
-          hintText:
-              'Enter your car ability , durability ,etc message here.........',
-          hintStyle: AppTextStyles.meta(context),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(AppSpacing.sm),
-          counterText: '$_characterCount/$_maxCharacters',
-          counterStyle: AppTextStyles.meta(context),
-        ),
-        style: AppTextStyles.body(context),
-      ),
-    );
-  }
+  // Widget _buildCarAbilityTextArea() {
+  //   return Container(
+  //     decoration: BoxDecoration(
+  //       color: AppColors.white,
+  //       borderRadius: BorderRadius.circular(12),
+  //       border: Border.all(color: AppColors.border.withOpacity(0.2)),
+  //     ),
+  //     child: TextField(
+  //       controller: _carAbilityController,
+  //       maxLines: 5,
+  //       maxLength: _maxCharacters,
+  //       decoration: InputDecoration(
+  //         hintText:
+  //             'Enter your car ability , durability ,etc message here.........',
+  //         hintStyle: AppTextStyles.meta(context),
+  //         border: InputBorder.none,
+  //         contentPadding: const EdgeInsets.all(AppSpacing.sm),
+  //         counterText: '$_characterCount/$_maxCharacters',
+  //         counterStyle: AppTextStyles.meta(context),
+  //       ),
+  //       style: AppTextStyles.body(context),
+  //     ),
+  //   );
+  // }
 
   Widget _buildTermsCheckbox() {
     return Row(

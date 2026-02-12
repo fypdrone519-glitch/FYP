@@ -18,3 +18,8 @@ export { getEvidenceStatus } from './bookings/getEvidenceStatus';
 // ... other exports
 // Export revenue functions
 export {getHostRevenue} from './revenue/getHostRevenue';
+export {logVehicleView, logVehicleBooking} from './analytics/logVehicleBehavior';
+export {
+  computeRecommendedCars,
+  processRecommendationJob,
+} from './recommendations/computeRecommendedCars';

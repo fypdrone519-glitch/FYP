@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:car_listing_app/services/user_behavior_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
@@ -1070,6 +1071,8 @@ Widget _buildPayButton() {
                   'rent_per_day': rentPerDay,
                   'created_at': FieldValue.serverTimestamp(),
                 });
+
+                await UserBehaviorService.instance.logVehicleBooking(vehicleId);
 
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
