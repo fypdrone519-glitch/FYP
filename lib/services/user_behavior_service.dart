@@ -10,7 +10,7 @@ class UserBehaviorService {
   );
 
   Future<void> logVehicleView(String vehicleId) async {
-    print('calling Logging vehicle view for vehicle ID: $vehicleId');
+    //print('calling Logging vehicle view for vehicle ID: $vehicleId');
     await _call('logVehicleView', vehicleId);
   }
 
@@ -22,10 +22,10 @@ class UserBehaviorService {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || vehicleId.trim().isEmpty) {
       if (uid == null) {
-        print('⚠️ $functionName skipped: user is not authenticated');
+        //print('⚠️ $functionName skipped: user is not authenticated');
       }
       if (vehicleId.trim().isEmpty) {
-        print('⚠️ $functionName skipped: vehicleId is empty');
+        //print('⚠️ $functionName skipped: vehicleId is empty');
       }
       return;
     }
@@ -33,10 +33,10 @@ class UserBehaviorService {
     try {
       final callable = _functions.httpsCallable(functionName);
       final result = await callable.call({'vehicleId': vehicleId});
-      print(
-        '✅ $functionName success for vehicleId=$vehicleId, '
-        'response=${result.data}',
-      );
+      // print(
+      //   '✅ $functionName success for vehicleId=$vehicleId, '
+      //   'response=${result.data}',
+      // );
       await _computeRecommendations(uid);
     } on FirebaseFunctionsException catch (error) {
       print(
@@ -52,7 +52,7 @@ class UserBehaviorService {
     try {
       final callable = _functions.httpsCallable('computeRecommendedCars');
       final result = await callable.call({'userId': userId});
-      print('✅ computeRecommendedCars success: response=${result.data}');
+      //print('✅ computeRecommendedCars success: response=${result.data}');
     } on FirebaseFunctionsException catch (error) {
       print(
         '❌ computeRecommendedCars failed: code=${error.code}, '

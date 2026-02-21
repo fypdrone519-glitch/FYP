@@ -49,7 +49,7 @@ export const computeRecommendedCars = functions.https.onCall(
       throw new functions.https.HttpsError('invalid-argument', 'userId is required');
     }
 
-    const isAdmin = context.auth.token?.admin === true;
+    const isAdmin = context.auth.token?.role === 'admin';
     if (context.auth.uid !== userId && !isAdmin) {
       throw new functions.https.HttpsError(
         'permission-denied',

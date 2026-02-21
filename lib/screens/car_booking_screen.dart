@@ -60,8 +60,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   String get _drivingOptions => widget.vehicleData['driving_options'] ?? 'Self Driving';
   bool get _canToggleDriver => _drivingOptions == 'Both';
   bool get _onlyWithDriver => _drivingOptions == 'With Driver';
-  // Check if user's KYC verification status is VERIFIED (case-insensitive)
-  bool get isVerified => status?.trim().toUpperCase() == "VERIFIED";
+  // Check if user's KYC verification status is verified (case-insensitive).
+  bool get isVerified => status?.trim().toLowerCase() == "verified";
   bool get isLoading => status == "loading";
 
   // Validation flags for required fields
@@ -1055,8 +1055,9 @@ Widget _buildPayButton() {
                   'owner_id': ownerId,
                   'renter_id': renterId,
                   'booking_type': bookingType,
-                  // Trip status (host must approve)
-                  'status': 'PENDING', // Status will change to APPROVED when host approves
+                  // Trip status progression:
+                  // pending_admin_approval -> admin_approved -> host_approved
+                  'status': 'pending_admin_approval',
                   'renter_full_name': _fullNameController.text.trim(),
                   'renter_contact': _contactController.text.trim(),
                   'renter_email': renterEmail,

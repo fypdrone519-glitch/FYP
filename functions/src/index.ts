@@ -23,3 +23,9 @@ export {
   computeRecommendedCars,
   processRecommendationJob,
 } from './recommendations/computeRecommendedCars';
+export { setAdminRole } from './admin/setAdminRole';
+export { approveBookingAsAdmin } from './admin/approveBookingAsAdmin';
+export { setTripScore } from './admin/setTripScore';
+export { migrateBookingStatuses } from './admin/migrateBookingStatuses';
+export { reviewKycRequest } from './admin/reviewKycRequest';
+export { submitBookingReview } from './reviews/submitBookingReview';

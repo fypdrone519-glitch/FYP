@@ -95,7 +95,7 @@ export const getEvidenceStatus = functions.https.onCall(
       const userId = context.auth.uid;
 
       // ROLE-BASED ACCESS CONTROL: Only renter, host, or admin can check evidence status
-      const isAdmin = context.auth.token?.admin === true;
+      const isAdmin = context.auth.token?.role === 'admin';
       const isRenter = booking.renter_id === userId;
       const isHost = booking.owner_id === userId;
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -25,6 +27,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   bool _isLoading = true;
   GoogleMapController? _mapController;
   LatLng? _renterLocation;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+  _renterLocationSubscription;
 
   @override
   void initState() {
@@ -34,6 +38,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
   @override
   void dispose() {
+    _renterLocationSubscription?.cancel();
     _mapController?.dispose();
     super.dispose();
   }
@@ -122,8 +127,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
     print('DEBUG: Starting to listen to renter location for user: $renterId');
 
+    _renterLocationSubscription?.cancel();
+
     // Listen to real-time location updates
-    FirebaseFirestore.instance
+    _renterLocationSubscription = FirebaseFirestore.instance
         .collection('users')
         .doc(renterId)
         .snapshots()
@@ -148,7 +155,21 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
       print('DEBUG: User data: $data');
 
-      final location = data['current_location'] as Map<String, dynamic>?;
+      final rawLocation = data['current_location'];
+      final location =
+          rawLocation is Map ? rawLocation.cast<String, dynamic>() : null;
+
+      // Backward-compatibility if location is stored as a Firestore GeoPoint.
+      if (rawLocation is GeoPoint) {
+        setState(() {
+          _renterLocation = LatLng(rawLocation.latitude, rawLocation.longitude);
+        });
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLng(_renterLocation!),
+        );
+        return;
+      }
+
       if (location == null) {
         print('DEBUG: No current_location field in user data');
         return;
@@ -161,9 +182,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       
       print('DEBUG: Latitude: $lat, Longitude: $lng');
       
-      if (lat != null && lng != null) {
-        final latDouble = lat is int ? lat.toDouble() : lat as double;
-        final lngDouble = lng is int ? lng.toDouble() : lng as double;
+      if (lat != null && lng != null && lat is num && lng is num) {
+        final latDouble = lat.toDouble();
+        final lngDouble = lng.toDouble();
         
         print('DEBUG: Setting location to: $latDouble, $lngDouble');
         
@@ -668,9 +689,13 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     Color? valueColor,
     bool valueBold = false,
   }) {
-    if(value == 'approved')
-    {
-      value = "Waiting for host to start trip";
+    final normalizedValue = value.trim().toLowerCase();
+    if (normalizedValue == 'host_approved' || normalizedValue == 'approved') {
+      value = 'Waiting for host to start trip';
+    } else if (normalizedValue == 'admin_approved') {
+      value = 'Pending host approval';
+    } else if (normalizedValue == 'pending_admin_approval') {
+      value = 'Waiting for admin approval';
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

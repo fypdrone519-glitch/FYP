@@ -1,16 +1,15 @@
 import 'dart:io';
 
-import 'package:car_listing_app/firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_functions/firebase_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../services/booking_service.dart';
 import 'booking_details_screen.dart';
+import 'submit_review_screen.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
 class TripsScreen extends StatefulWidget {
@@ -223,17 +222,35 @@ class _TripsScreenState extends State<TripsScreen>
     }
   }
 
+  Future<bool> _hasReviewSubmitted({
+    required String bookingId,
+    required String actor,
+  }) async {
+    try {
+      final reviewId = '${bookingId}_$actor';
+      final reviewDoc =
+          await FirebaseFirestore.instance
+              .collection('reviews')
+              .doc(reviewId)
+              .get();
+      return reviewDoc.exists;
+    } catch (_) {
+      return false;
+    }
+  }
+
   String _statusLabelForBooking(Map<String, dynamic> booking) {
     final raw = (booking['status'] as String?)?.trim().toLowerCase();
     if (raw == 'cancelled' || raw == 'canceled') return 'Cancelled';
-    if (raw == 'approved') return 'Approved';
+    if (raw == 'pending_admin_approval') return 'Waiting for admin approval';
+    if (raw == 'admin_approved') return 'Pending host approval';
+    if (raw == 'host_approved' || raw == 'approved') return 'Approved';
     if (raw == 'rejected') return 'Rejected';
     if (raw == 'completed') return 'Completed';
     if (raw == 'started') return 'Trip Started';
     if (raw == 'confirmed') return 'Confirmed';
-    if (raw == 'pending') return 'Pending';
-    if (raw == 'waiting for the approval' || raw == 'waiting') {
-      return 'Waiting for the approval';
+    if (raw == 'pending' || raw == 'waiting for the approval' || raw == 'waiting') {
+      return 'Pending host approval';
     }
     // Default: show as completed in history UI if unknown
     return 'Completed';
@@ -253,16 +270,23 @@ class _TripsScreenState extends State<TripsScreen>
     final raw = (booking['status'] as String?)?.trim().toLowerCase();
     return raw == 'ended';
   }
-  bool _isWaitingForApproval(Map<String, dynamic> booking) {
+  bool _isPendingAdminApproval(Map<String, dynamic> booking) {
     final raw = (booking['status'] as String?)?.trim().toLowerCase();
-    return raw == 'waiting for the approval' ||
-        raw == 'waiting' ||
-        raw == 'pending'; // New PENDING status
+    return raw == 'pending_admin_approval' || raw == 'requested';
+  }
+
+  bool _isAdminApproved(Map<String, dynamic> booking) {
+    final raw = (booking['status'] as String?)?.trim().toLowerCase();
+    return raw == 'admin_approved' || raw == 'pending' || raw == 'waiting';
+  }
+
+  bool _isWaitingForApproval(Map<String, dynamic> booking) {
+    return _isPendingAdminApproval(booking) || _isAdminApproved(booking);
   }
 
   bool _isApproved(Map<String, dynamic> booking) {
     final raw = (booking['status'] as String?)?.trim().toLowerCase();
-    return raw == 'approved';
+    return raw == 'host_approved' || raw == 'approved';
   }
 
   bool _isTripStarted(Map<String, dynamic> booking) {
@@ -379,7 +403,7 @@ class _TripsScreenState extends State<TripsScreen>
           .collection('bookings')
           .doc(bookingId)
           .update({
-            'status': 'Rejected',
+            'status': 'rejected',
             'rejected_at': FieldValue.serverTimestamp(),
             'rejected_by': user.uid,
           });
@@ -445,7 +469,7 @@ class _TripsScreenState extends State<TripsScreen>
           .collection('bookings')
           .doc(bookingId)
           .update({
-            'status': 'Cancelled',
+            'status': 'cancelled',
             'cancelled_at': FieldValue.serverTimestamp(),
             'cancelled_by': user.uid,
             'canceled_by': canceledBy, // New field to track who canceled
@@ -561,7 +585,10 @@ class _TripsScreenState extends State<TripsScreen>
     );
   }
 
-  Future<void> _startTripWithWalkaroundVideo(String bookingId) async {
+  Future<void> _startTripWithWalkaroundVideo(
+    String bookingId, {
+    required String actor,
+  }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       if (!mounted) return;
@@ -578,16 +605,7 @@ class _TripsScreenState extends State<TripsScreen>
     try {
       // print('StartTrip: bookingId=$bookingId');
       // print('StartTrip: user.uid=${user.uid}');
-      try {
-        final bucket = FirebaseStorage.instance.bucket;
-        //print('StartTrip: storageBucket=$bucket');
-        //print('StartTrip: projectId=${DefaultFirebaseOptions.currentPlatform.projectId}');
-
-      } catch (_) { 
-        // ignore
-      }
-
-      // Preflight: validate booking and renter match to help debug auth failures
+      // Preflight: validate booking and actor-role match to help debug auth failures
       final bookingSnap =
           await FirebaseFirestore.instance
               .collection('bookings')
@@ -598,12 +616,22 @@ class _TripsScreenState extends State<TripsScreen>
       }
       final bookingData = bookingSnap.data() ?? {};
       final renterId = bookingData['renter_id'] as String?;
-      if (renterId == null || renterId != user.uid) {
-        throw Exception(
-          'Renter mismatch. booking.renter_id=$renterId, user.uid=${user.uid}',
-        );
+      final ownerId = bookingData['owner_id'] as String?;
+      final isHostActor = actor == 'host';
+      if (isHostActor) {
+        if (ownerId == null || ownerId != user.uid) {
+          throw Exception(
+            'Host mismatch. booking.owner_id=$ownerId, user.uid=${user.uid}',
+          );
+        }
+      } else {
+        if (renterId == null || renterId != user.uid) {
+          throw Exception(
+            'Renter mismatch. booking.renter_id=$renterId, user.uid=${user.uid}',
+          );
+        }
       }
-      print('StartTrip: booking renter_id matches user');
+      print('StartTrip: booking actor match ok. actor=$actor');
 
       final source = await _selectVideoSource();
       if (source == null) return;
@@ -622,12 +650,14 @@ class _TripsScreenState extends State<TripsScreen>
 
       final file = File(picked.path);
       print('StartTrip: picked video path=${picked.path}');
+      final uploadPath =
+          isHostActor
+              ? 'bookings/$bookingId/start/host_walkaround.mp4'
+              : 'bookings/$bookingId/start/renter_walkaround.mp4';
       final storageRef = FirebaseStorage.instance
           .ref()
-          .child('bookings/$bookingId/start/renter_walkaround.mp4');
-      print(
-        'StartTrip: upload target=bookings/$bookingId/start/renter_walkaround.mp4',
-      );
+          .child(uploadPath);
+      print('StartTrip: upload target=$uploadPath');
       await storageRef.putFile(file);
       print('StartTrip: upload complete');
       final url = await storageRef.getDownloadURL();
@@ -637,24 +667,40 @@ class _TripsScreenState extends State<TripsScreen>
         'confirmBookingStart',
       );
       print('StartTrip: calling confirmBookingStart');
-      await confirmStart.call({'bookingId': bookingId});
+      await confirmStart.call({'bookingId': bookingId, 'actor': actor});
       print('StartTrip: confirmBookingStart success');
 
+      final walkaroundUpdate =
+          isHostActor
+              ? <String, dynamic>{
+                'host_walkaround_video_url': url,
+                'host_walkaround_video_uploaded_at':
+                    FieldValue.serverTimestamp(),
+              }
+              : <String, dynamic>{
+                'renter_walkaround_video_url': url,
+                'renter_walkaround_video_uploaded_at':
+                    FieldValue.serverTimestamp(),
+                // Backward-compatible field kept for existing clients/data.
+                'walkaround_video_url': url,
+                'walkaround_video_uploaded_at': FieldValue.serverTimestamp(),
+              };
       await FirebaseFirestore.instance
           .collection('bookings')
           .doc(bookingId)
-          .update({
-            'walkaround_video_url': url,
-            'walkaround_video_uploaded_at': FieldValue.serverTimestamp(),
-          });
+          .update(walkaroundUpdate);
 
       if (!mounted) return;
       if (loadingShown) {
         Navigator.of(context, rootNavigator: true).pop();
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Trip started and walkaround video uploaded.'),
+        SnackBar(
+          content: Text(
+            isHostActor
+                ? 'Host walkaround video uploaded. Waiting for renter.'
+                : 'Trip started and renter walkaround video uploaded.',
+          ),
           backgroundColor: Colors.green,
         ),
       );
@@ -775,11 +821,14 @@ class _TripsScreenState extends State<TripsScreen>
       final confirmEnd = FirebaseFunctions.instance.httpsCallable(
         'confirmBookingEnd',
       );
-      await confirmEnd.call({
+      final result = await confirmEnd.call({
         'bookingId': bookingId,
         'actor': actor,
         'hasDamage': false,
       });
+      final data = Map<String, dynamic>.from(
+        (result.data as Map?)?.cast<String, dynamic>() ?? const {},
+      );
 
       if (uploadPhotosBefore && endPhotoUrls != null) {
         await FirebaseFirestore.instance
@@ -801,6 +850,24 @@ class _TripsScreenState extends State<TripsScreen>
           backgroundColor: Colors.green,
         ),
       );
+
+      final bool bothConfirmed = data['bothConfirmed'] == true;
+      final String? newStatus = data['newStatus'] as String?;
+      final bool isEnded = bothConfirmed || (newStatus == 'ended');
+
+      if (isEnded) {
+        // Prompt review once trip reaches ended state.
+        await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder:
+                (_) => SubmitReviewScreen(
+                  bookingId: bookingId,
+                  actor: actor,
+                ),
+          ),
+        );
+      }
 
     } catch (e) {
       if (!mounted) return;
@@ -844,6 +911,7 @@ class _TripsScreenState extends State<TripsScreen>
         final upcomingDocs =
             docs.where((d) {
                 final data = d.data();
+                if (_viewAsHost && _isPendingAdminApproval(data)) return false;
                 if (_isCancelled(data)) return false;
                 if (_isCompleted(data)) return false;
                 if (_isEnded(data)) return false;
@@ -958,6 +1026,7 @@ class _TripsScreenState extends State<TripsScreen>
         final historyDocs =
             docs.where((d) {
                 final data = d.data();
+                if (_viewAsHost && _isPendingAdminApproval(data)) return false;
                 final endTs = data['end_time'];
                 if (endTs is! Timestamp) return false;
                 // Show cancelled/completed bookings in history even if they are in the future
@@ -1090,6 +1159,7 @@ class _TripsScreenState extends State<TripsScreen>
                   _buildBookingHistoryCard(
                     screenHeight: screenHeight,
                     screenWidth: screenWidth,
+                    bookingId: doc.id,
                     booking: doc.data(),
                     status: _statusLabelForBooking(doc.data()),
                   ),
@@ -1127,10 +1197,34 @@ class _TripsScreenState extends State<TripsScreen>
     );
     final isBeforeStartDay = startDay.isAfter(todayStart);
     final isStartDayOrAfter = !isBeforeStartDay;
-    final canStartTripBase =
-        !_viewAsHost && isUpcoming && _isApproved(booking) && !isTripStarted;
-    final showStartTripButton = canStartTripBase && isStartDayOrAfter;
-    final enableStartTripButton = canStartTripBase && isStartDayOrAfter;
+    final startConfirmations =
+        (booking['start_confirmations'] as Map?)?.cast<String, dynamic>() ??
+        const {};
+    final hostStartConfirmed = startConfirmations['host'] == true;
+    final renterStartConfirmed = startConfirmations['renter'] == true;
+    final isApprovedAndNotStarted =
+        isUpcoming && _isApproved(booking) && !isTripStarted;
+    final canStartAsHost =
+        _viewAsHost && isApprovedAndNotStarted && !hostStartConfirmed;
+    final canStartAsRenter =
+        !_viewAsHost &&
+        isApprovedAndNotStarted &&
+        hostStartConfirmed &&
+        !renterStartConfirmed;
+    final showStartTripButton =
+        (canStartAsHost || canStartAsRenter) && isStartDayOrAfter;
+    final enableStartTripButton = showStartTripButton;
+    String? approvedWaitingBadgeText;
+    if (!showStartTripButton && isApprovedAndNotStarted) {
+      if (_viewAsHost) {
+        approvedWaitingBadgeText =
+            hostStartConfirmed
+                ? 'Waiting for renter to start'
+                : 'Host must start trip';
+      } else if (!hostStartConfirmed) {
+        approvedWaitingBadgeText = 'Waiting for host to start';
+      }
+    }
     
     // RENTER: Show cancel button when waiting for approval OR when approved but not started
     final showCancelButtonRenter = !_viewAsHost && isUpcoming && !isTripStarted;
@@ -1165,6 +1259,10 @@ class _TripsScreenState extends State<TripsScreen>
     final renterAlreadyConfirmed = endConfirmations['renter'] == true;
     final showHostWaitingForRenterEnd =
         _viewAsHost && hostAlreadyConfirmed && !renterAlreadyConfirmed;
+    final waitingLabel =
+        _isPendingAdminApproval(booking)
+            ? 'Waiting for admin approval'
+            : (_isAdminApproved(booking) ? 'Pending host approval' : null);
 
     return FutureBuilder<Map<String, dynamic>?>(
       future: _loadVehicle(vehicleId),
@@ -1181,6 +1279,11 @@ class _TripsScreenState extends State<TripsScreen>
             (vehicle?['images'] as List?)?.cast<String>() ?? const [];
         final imageUrl = images.isNotEmpty ? images.first : '';
         final location = (vehicle?['street_address'] as String?) ?? '';
+        final rawScore = booking['admin_trip_score'];
+        final int? adminTripScore =
+            rawScore is int ? rawScore : (rawScore is num ? rawScore.toInt() : null);
+        final String? adminTripScoreReason =
+            (booking['admin_trip_score_reason'] as String?)?.trim();
 
         return _buildReservationCard(
           screenHeight: screenHeight,
@@ -1191,12 +1294,19 @@ class _TripsScreenState extends State<TripsScreen>
           price: 'PKR ${amountPaid.toStringAsFixed(0)}',
           imageUrl: imageUrl,
           location: location.isEmpty ? '—' : location,
+          adminTripScore: adminTripScore,
+          adminTripScoreReason:
+              adminTripScoreReason != null && adminTripScoreReason.isNotEmpty
+                  ? adminTripScoreReason
+                  : null,
           isUpcoming: isUpcoming,
           // Renter should see "Waiting for the approval" once booked.
           showWaitingLabel: !_viewAsHost && _isWaitingForApproval(booking),
+          waitingLabel: waitingLabel,
           // Host sees Approve button when waiting; after approved, show Cancel/Modify row.
-          showApproveButton: _viewAsHost && _isWaitingForApproval(booking),
-          showApprovedWaitingBadge: _viewAsHost && _isApproved(booking) && !isTripStarted,
+          showApproveButton: _viewAsHost && _isAdminApproved(booking),
+          showApprovedWaitingBadge: approvedWaitingBadgeText != null,
+          approvedWaitingBadgeText: approvedWaitingBadgeText,
           showStartTripButton: showStartTripButton,
           showTripStartedLabel: false,
           showStartTripOnlyButton: showStartTripOnlyButton,
@@ -1208,10 +1318,13 @@ class _TripsScreenState extends State<TripsScreen>
           showWaitingForRenterToEndButton: showHostWaitingForRenterEnd,
           onStartTrip:
               enableStartTripButton
-                  ? () => _startTripWithWalkaroundVideo(bookingId)
+                  ? () => _startTripWithWalkaroundVideo(
+                    bookingId,
+                    actor: _viewAsHost ? 'host' : 'renter',
+                  )
                   : null,
           onApprove:
-              _viewAsHost && _isWaitingForApproval(booking)
+              _viewAsHost && _isAdminApproved(booking)
                   ? () async => _approveBooking(bookingId)
                   : null,
           onCancel:
@@ -1238,6 +1351,7 @@ class _TripsScreenState extends State<TripsScreen>
   Widget _buildBookingHistoryCard({
     required double screenHeight,
     required double screenWidth,
+    required String bookingId,
     required Map<String, dynamic> booking,
     required String status,
   }) {
@@ -1247,10 +1361,17 @@ class _TripsScreenState extends State<TripsScreen>
     final dateRange = _formatDateRangeShort(start, end);
     final amountPaid = (booking['amount_paid'] as num?)?.toDouble() ?? 0.0;
 
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: _loadVehicle(vehicleId),
+    return FutureBuilder<List<dynamic>>(
+      future: Future.wait([
+        _loadVehicle(vehicleId),
+        _hasReviewSubmitted(
+          bookingId: bookingId,
+          actor: _viewAsHost ? 'host' : 'renter',
+        ),
+      ]),
       builder: (context, snap) {
-        final vehicle = snap.data;
+        final vehicle = snap.hasData ? snap.data![0] as Map<String, dynamic>? : null;
+        final hasSubmittedReview = snap.hasData ? snap.data![1] as bool : false;
         final make = (vehicle?['make'] as String?) ?? '';
         final carName = (vehicle?['car_name'] as String?) ?? '';
         final displayName =
@@ -1261,6 +1382,13 @@ class _TripsScreenState extends State<TripsScreen>
         final images =
             (vehicle?['images'] as List?)?.cast<String>() ?? const [];
         final imageUrl = images.isNotEmpty ? images.first : '';
+        final rawScore = booking['admin_trip_score'];
+        final int? adminTripScore =
+            rawScore is int ? rawScore : (rawScore is num ? rawScore.toInt() : null);
+        final String? adminTripScoreReason =
+            (booking['admin_trip_score_reason'] as String?)?.trim();
+        final rawStatus = (booking['status'] as String?)?.trim().toLowerCase();
+        final canReviewThisTrip = rawStatus == 'ended' || rawStatus == 'completed';
 
         return _buildHistoryCard(
           screenHeight: screenHeight,
@@ -1270,6 +1398,30 @@ class _TripsScreenState extends State<TripsScreen>
           price: 'PKR ${amountPaid.toStringAsFixed(0)}',
           status: status,
           imageUrl: imageUrl,
+          adminTripScore: adminTripScore,
+          adminTripScoreReason:
+              adminTripScoreReason != null && adminTripScoreReason.isNotEmpty
+                  ? adminTripScoreReason
+                  : null,
+          showAddReviewButton: canReviewThisTrip && !hasSubmittedReview,
+          onAddReview:
+              canReviewThisTrip && !hasSubmittedReview
+                  ? () async {
+                      await Navigator.push<bool>(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => SubmitReviewScreen(
+                                bookingId: bookingId,
+                                actor: _viewAsHost ? 'host' : 'renter',
+                              ),
+                        ),
+                      );
+                      if (mounted) {
+                        setState(() {});
+                      }
+                    }
+                  : null,
         );
       },
     );
@@ -1284,10 +1436,14 @@ class _TripsScreenState extends State<TripsScreen>
     required String price,
     required String imageUrl,
     required String location,
+    int? adminTripScore,
+    String? adminTripScoreReason,
     required bool isUpcoming,
     bool showWaitingLabel = false,
+    String? waitingLabel,
     bool showApproveButton = false,
     bool showApprovedWaitingBadge = false,
+    String? approvedWaitingBadgeText,
     bool showStartTripButton = false,
     bool showTripStartedLabel = false,
     bool showStartTripOnlyButton = false,
@@ -1379,7 +1535,7 @@ class _TripsScreenState extends State<TripsScreen>
                     if (showWaitingLabel) ...[
                       SizedBox(height: screenHeight * 0.004),
                       Text(
-                        'Waiting for the approval',
+                        waitingLabel ?? 'Pending approval',
                         style: TextStyle(
                           fontSize: screenHeight * 0.014,
                           fontWeight: FontWeight.w600,
@@ -1411,6 +1567,57 @@ class _TripsScreenState extends State<TripsScreen>
               ),
             ],
           ),
+
+          if (_viewAsHost && adminTripScore != null) ...[
+            SizedBox(height: screenHeight * 0.012),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.03,
+                vertical: screenHeight * 0.01,
+              ),
+              decoration: BoxDecoration(
+                color:
+                    adminTripScore < 7
+                        ? const Color(0xFFFFF4F2)
+                        : const Color(0xFFEFFAF3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color:
+                      adminTripScore < 7
+                          ? const Color(0xFFF0B0A8)
+                          : const Color(0xFFAEDFC0),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Admin score: $adminTripScore/10',
+                    style: TextStyle(
+                      fontSize: screenHeight * 0.015,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          adminTripScore < 7
+                              ? const Color(0xFFB1402B)
+                              : const Color(0xFF1C7A42),
+                    ),
+                  ),
+                  if (adminTripScoreReason != null &&
+                      adminTripScoreReason.isNotEmpty) ...[
+                    SizedBox(height: screenHeight * 0.004),
+                    Text(
+                      adminTripScoreReason,
+                      style: TextStyle(
+                        fontSize: screenHeight * 0.014,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
 
           SizedBox(height: screenHeight * 0.015),
 
@@ -1472,32 +1679,57 @@ class _TripsScreenState extends State<TripsScreen>
                     ),
                   ),
                 ] else if (showEndTripOnlyButton) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: onEndTrip,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accent,
-                        foregroundColor: AppColors.lightText,
-                        elevation: 0,
-                        padding: EdgeInsets.symmetric(
-                          vertical: screenHeight * 0.015,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: onEndTrip,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.hostBackground,
+                            foregroundColor: AppColors.primaryText,
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(
+                              vertical: screenHeight * 0.015,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                          ),
+                          child: Text(
+                            _endingTripIds.contains(bookingId)
+                                ? 'Ending...'
+                                : 'End Trip',
+                            style: TextStyle(
+                              fontSize: screenHeight * 0.016,
+                              color: AppColors.primaryText,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
-                      child: Text(
-                        _endingTripIds.contains(bookingId)
-                            ? 'Ending...'
-                            : 'End Trip',
-                        style: TextStyle(
-                          fontSize: screenHeight * 0.016,
-                          color: AppColors.lightText,
-                          fontWeight: FontWeight.w600,
+                      SizedBox(width: screenWidth * 0.03),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _navigateToBookingDetails(bookingId),
+                          icon: const Icon(Icons.visibility, size: 16, color: Colors.white),
+                          label: Text(
+                            'View Details',
+                            style: TextStyle(
+                              fontSize: screenHeight * 0.016,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ] else if (showWaitingForRenterToEndButton) ...[
                   SizedBox(
@@ -1670,9 +1902,9 @@ class _TripsScreenState extends State<TripsScreen>
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
-                'Waiting for renter to start',
-                style: TextStyle(
+              child: Text(
+                approvedWaitingBadgeText ?? 'Waiting for renter to start',
+                style: const TextStyle(
                   color: AppColors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -1692,6 +1924,10 @@ class _TripsScreenState extends State<TripsScreen>
     required String price,
     required String status,
     required String imageUrl,
+    int? adminTripScore,
+    String? adminTripScoreReason,
+    bool showAddReviewButton = false,
+    VoidCallback? onAddReview,
   }) {
     final isCompleted = status == 'Completed';
 
@@ -1780,16 +2016,37 @@ class _TripsScreenState extends State<TripsScreen>
                     ),
                   ],
                 ),
+                if (_viewAsHost && adminTripScore != null) ...[
+                  SizedBox(height: screenHeight * 0.005),
+                  Text(
+                    'Admin score: $adminTripScore/10'
+                    '${(adminTripScoreReason != null && adminTripScoreReason.isNotEmpty) ? ' - $adminTripScoreReason' : ''}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: screenHeight * 0.014,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          adminTripScore < 7
+                              ? const Color(0xFFB1402B)
+                              : const Color(0xFF1C7A42),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
 
           // Rebook Button
           OutlinedButton.icon(
-            onPressed: () {},
-            icon: Icon(Icons.refresh, size: 16, color: AppColors.accent),
+            onPressed: showAddReviewButton ? onAddReview : () {},
+            icon: Icon(
+              showAddReviewButton ? Icons.rate_review : Icons.refresh,
+              size: 16,
+              color: AppColors.accent,
+            ),
             label: Text(
-              'Rebook',
+              showAddReviewButton ? 'Add Review' : 'Rebook',
               style: TextStyle(
                 fontSize: screenHeight * 0.015,
                 color: AppColors.accent,

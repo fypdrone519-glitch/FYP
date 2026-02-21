@@ -13,6 +13,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import {
   BookingStatus,
+  PLATFORM_COMMISSION_RATE,
   TransactionType,
   validateEndPhotosExist,
   StorageValidationError,
@@ -47,17 +48,15 @@ interface BookingData {
   status: string;
   renter_id: string;
   owner_id: string;
+  vehicle_id?: string;
   end_time: admin.firestore.Timestamp;
+  amount_paid?: number;
   end_confirmations?: EndConfirmations;
   ended_at?: admin.firestore.Timestamp;
 }
 
-// ============================================================================
-// Helper: Generate deterministic transaction ID for idempotency
-// ============================================================================
-
-function getEndingTransactionId(bookingId: string): string {
-  return `${bookingId}_${TransactionType.BOOKING_ENDED}`;
+function getFundsSettledTransactionId(bookingId: string): string {
+  return `${bookingId}_${TransactionType.FUNDS_SETTLED}`;
 }
 
 // ============================================================================
@@ -95,19 +94,20 @@ export const confirmBookingEnd = functions.https.onCall(
 
     const db = admin.firestore();
     const bookingRef = db.collection('bookings').doc(bookingId);
-    const transactionId = getEndingTransactionId(bookingId);
-    const transactionRef = db.collection('transactions').doc(transactionId);
+    const fundsSettledRef = db
+      .collection('transactions')
+      .doc(getFundsSettledTransactionId(bookingId));
 
     try {
       const result = await db.runTransaction(async (transaction) => {
-        // Fetch booking and check for existing transaction in parallel
-        const [bookingDoc, existingTransactionDoc] = await Promise.all([
+        // Fetch booking and check for existing settlement in parallel
+        const [bookingDoc, existingFundsSettledDoc] = await Promise.all([
           transaction.get(bookingRef),
-          transaction.get(transactionRef),
+          transaction.get(fundsSettledRef),
         ]);
 
-        // RACE CONDITION GUARD: If transaction already exists, booking was already ended
-        if (existingTransactionDoc.exists) {
+        // Idempotency guard: if settlement already exists, booking end was already finalized.
+        if (existingFundsSettledDoc.exists) {
           return {
             confirmed: true,
             actor,
@@ -178,11 +178,17 @@ export const confirmBookingEnd = functions.https.onCall(
         // Check for duplicate confirmation
         const confirmations = booking.end_confirmations || {};
         if (confirmations[actor] === true) {
-          throw new functions.https.HttpsError(
-            'already-exists',
-            `${actor} has already confirmed booking end`,
-            { code: StateErrorCode.DUPLICATE_ACTION }
-          );
+          const bothConfirmed =
+            confirmations.renter === true &&
+            confirmations.host === true;
+          return {
+            confirmed: true,
+            actor,
+            bothConfirmed,
+            newStatus: bothConfirmed ? BookingStatus.ENDED : BookingStatus.STARTED,
+            alreadyEnded: bothConfirmed,
+            message: `${actor} has already confirmed booking end`,
+          };
         }
 
         // If host confirms with damage, validate photos exist
@@ -233,17 +239,26 @@ export const confirmBookingEnd = functions.https.onCall(
         // Apply booking update
         transaction.update(bookingRef, bookingUpdate);
 
-        // EXACTLY ONCE: Create immutable transaction record with deterministic ID
-        // This ensures that even if function is called twice simultaneously,
-        // only one transaction document is created
+        // EXACTLY ONCE financial ledger entry at end state.
         if (bothConfirmed) {
-          transaction.set(transactionRef, {
+          const grossAmount = Number(booking.amount_paid ?? 0);
+          const platformFee = Math.round(grossAmount * PLATFORM_COMMISSION_RATE * 100) / 100;
+          const hostEarning = Math.round((grossAmount - platformFee) * 100) / 100;
+
+          // Financial ledger entry: settle platform fee + host earning at ENDED.
+          transaction.set(fundsSettledRef, {
             booking_id: bookingId,
-            type: TransactionType.BOOKING_ENDED,
+            type: TransactionType.FUNDS_SETTLED,
             actor: 'system',
             created_at: admin.firestore.FieldValue.serverTimestamp(),
             renter_id: booking.renter_id,
             owner_id: booking.owner_id,
+            vehicle_id: booking.vehicle_id ?? null,
+            gross_amount: Math.round(grossAmount * 100) / 100,
+            commission_rate: PLATFORM_COMMISSION_RATE,
+            platform_fee: platformFee,
+            host_earning: hostEarning,
+            status: 'approved',
             immutable: true,
           });
         }

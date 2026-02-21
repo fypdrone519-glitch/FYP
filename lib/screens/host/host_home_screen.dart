@@ -16,29 +16,20 @@ class HostHomeScreen extends StatefulWidget {
 }
 
 class _HostHomeScreenState extends State<HostHomeScreen> {
-  // Mock revenue data
-  final double totalRevenue = 9852.02;
-
-  final List<RevenueCategory> revenueCategories = [
-    RevenueCategory(
-      name: 'Civic',
-      amount: 5712.17,
-      color: const Color(0xFF4ECDC4), // Teal
-    ),
-    RevenueCategory(
-      name: 'Corolla',
-      amount: 3152.65,
-      color: const Color(0xFFFF6B9D), // Pink
-    ),
-    RevenueCategory(
-      name: 'Suzuki',
-      amount: 987.20,
-      color: const Color(0xFFFFC857), // Yellow/Orange
-    ),
+  static const List<Color> _revenuePalette = [
+    Color(0xFF4ECDC4),
+    Color(0xFFFF6B9D),
+    Color(0xFFFFC857),
+    Color(0xFF6C8CFF),
+    Color(0xFF5CCB5F),
   ];
 
   List<Car> _cars = [];
   final List<Map<String, dynamic>> _vehicleDataList = [];
+  List<RevenueCategory> _revenueCategories = [];
+  double _totalRevenue = 0.0;
+  bool _isRevenueLoading = true;
+  String? _revenueError;
   bool _isLoading = true;
 
   // Firebase instances
@@ -46,12 +37,19 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   double get totalAmount =>
-      revenueCategories.fold(0.0, (sum, cat) => sum + cat.amount);
+      _revenueCategories.fold(0.0, (runningTotal, cat) => runningTotal + cat.amount);
 
   @override
   void initState() {
     super.initState();
-    _loadCars();
+    _loadHomeData();
+  }
+
+  Future<void> _loadHomeData() async {
+    print('[HostHomeRevenue] _loadHomeData started');
+    await _loadCars();
+    await _loadRevenue();
+    print('[HostHomeRevenue] _loadHomeData finished');
   }
 
   Future<String> _getaddressFromLatLng(
@@ -93,7 +91,7 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
       final List<Car> cars =
           vehiclesSnapshot.docs.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            print(data); // Log the complete data for debugging
+            //print(data); // Log the complete data for debugging
 
             _vehicleDataList.add({
               'id': doc.id,
@@ -122,9 +120,6 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
                 print('Resolved address: $address');
               });
             }
-
-            String vehicleType = data['vehicle_type'] ?? 'Unknown';
-            //print('Loaded vehicle type: $vehicleType');
 
             // Get rent per day
             double rentPerDay = 0.0;
@@ -179,6 +174,103 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
         ).showSnackBar(SnackBar(content: Text('Error loading cars: $e')));
       }
     }
+  }
+
+  Future<void> _loadRevenue() async {
+    final User? currentUser = _auth.currentUser;
+    print(
+      '[HostHomeRevenue] _loadRevenue called. user=${currentUser?.uid ?? 'null'}',
+    );
+
+    if (currentUser == null) {
+      print('[HostHomeRevenue] No authenticated user. Skipping revenue load.');
+      setState(() {
+        _isRevenueLoading = false;
+        _totalRevenue = 0.0;
+        _revenueCategories = [];
+      });
+      return;
+    }
+
+    try {
+      print('[HostHomeRevenue] Querying transactions for owner_id=${currentUser.uid}');
+      final snapshot = await _firestore
+          .collection('transactions')
+          .where('owner_id', isEqualTo: currentUser.uid)
+          .get();
+
+      final docs = snapshot.docs;
+      final bookings = <Map<String, dynamic>>[];
+
+      for (final doc in docs) {
+        final tx = doc.data();
+        final type = (tx['type'] as String?)?.trim();
+        if (type != 'funds_settled') continue;
+        bookings.add({
+          'vehicleId': tx['vehicle_id'],
+          'hostEarning': tx['host_earning'],
+        });
+      }
+
+      print(
+        '[HostHomeRevenue] Parsed transactions: docs=${docs.length}, settled=${bookings.length}',
+      );
+
+      final Map<String, double> earningsByVehicle = {};
+      double totalHostRevenue = 0.0;
+      for (final raw in bookings) {
+        final vehicleId = (raw['vehicleId'] ?? 'other').toString();
+        final amount = (raw['hostEarning'] as num?)?.toDouble() ?? 0.0;
+        totalHostRevenue += amount;
+        earningsByVehicle[vehicleId] = (earningsByVehicle[vehicleId] ?? 0.0) + amount;
+      }
+
+      final entries = earningsByVehicle.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+
+      final categories = <RevenueCategory>[];
+      for (var i = 0; i < entries.length; i++) {
+        final entry = entries[i];
+        categories.add(
+          RevenueCategory(
+            name: _vehicleLabelForRevenue(entry.key),
+            amount: entry.value,
+            color: _revenuePalette[i % _revenuePalette.length],
+          ),
+        );
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _totalRevenue = totalHostRevenue;
+        _revenueCategories = categories;
+        _isRevenueLoading = false;
+        _revenueError = null;
+      });
+      print(
+        '[HostHomeRevenue] Revenue state updated. total=$_totalRevenue, categories=${_revenueCategories.length}',
+      );
+    } catch (e) {
+      print('[HostHomeRevenue] Revenue query failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _isRevenueLoading = false;
+        _revenueError = e.toString();
+        print('[HostHomeRevenue] Revenue error set: $_revenueError');
+      });
+    }
+  }
+
+  String _vehicleLabelForRevenue(String vehicleId) {
+    if (vehicleId == 'other') return 'Other';
+    for (final vehicle in _vehicleDataList) {
+      if ((vehicle['id'] as String?) != vehicleId) continue;
+      final make = (vehicle['make'] as String?)?.trim() ?? '';
+      final carName = (vehicle['car_name'] as String?)?.trim() ?? '';
+      final label = '$make $carName'.trim();
+      return label.isEmpty ? 'Vehicle' : label;
+    }
+    return 'Vehicle';
   }
 
   @override
@@ -384,28 +476,79 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
   }
 
   Widget _buildRevenueChart(BuildContext context) {
+    if (_isRevenueLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(AppSpacing.md),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_revenueError != null) {
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Unable to load revenue right now.',
+              style: AppTextStyles.body(context).copyWith(
+                color: AppColors.secondaryText,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              _revenueError!,
+              style: AppTextStyles.body(context).copyWith(
+                color: AppColors.secondaryText,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_totalRevenue <= 0 || _revenueCategories.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'PKR 0.00',
+              style: AppTextStyles.h1(context).copyWith(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'No settled revenue yet.',
+              style: AppTextStyles.body(context).copyWith(
+                color: AppColors.secondaryText,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Total Revenue Amount
           Text(
-            '\PKR ${totalRevenue.toStringAsFixed(2)}',
+            'PKR ${_totalRevenue.toStringAsFixed(2)}',
             style: AppTextStyles.h1(context).copyWith(
-              //color: AppColors.lightText,
               fontSize: 32,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-
-          // Progress Bar
           _buildProgressBar(context),
           const SizedBox(height: AppSpacing.md),
-
-          // Category List
-          ...revenueCategories.map((category) {
+          ..._revenueCategories.map((category) {
             final percentage = (category.amount / totalAmount * 100);
             return _buildCategoryItem(
               context,
@@ -417,22 +560,23 @@ class _HostHomeScreenState extends State<HostHomeScreen> {
       ),
     );
   }
-
   Widget _buildProgressBar(BuildContext context) {
     return SizedBox(
       height: 22,
       child: Row(
         children:
-            revenueCategories.asMap().entries.map((entry) {
+            _revenueCategories.asMap().entries.map((entry) {
               final index = entry.key;
               final category = entry.value;
-              final percentage = category.amount / totalAmount;
+              final percentage =
+                  totalAmount <= 0 ? 0.0 : category.amount / totalAmount;
+              final flex = (percentage * 100).round().clamp(1, 100);
 
               return Expanded(
-                flex: (percentage * 100).round(),
+                flex: flex,
                 child: Padding(
                   padding: EdgeInsets.only(
-                    right: index < revenueCategories.length - 1 ? 2.0 : 0,
+                    right: index < _revenueCategories.length - 1 ? 2.0 : 0,
                   ),
                   child: Container(
                     decoration: BoxDecoration(

@@ -76,7 +76,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
         if (latitude != null && longitude != null) {
           _getaddressFromLatLng(latitude, longitude).then((addr) {
             address = addr;
-            print('Resolved address: $address');
+            //print('Resolved address: $address');
           });
         }
         

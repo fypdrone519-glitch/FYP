@@ -6,13 +6,7 @@
 
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { BookingStatus } from '../shared';
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const PLATFORM_COMMISSION_RATE = 0.10; // 10%
+import { PLATFORM_COMMISSION_RATE, TransactionType } from '../shared';
 
 // ============================================================================
 // Types
@@ -25,13 +19,14 @@ interface GetHostRevenueRequest {
   endDate?: string;   // ISO date string
 }
 
-interface BookingData {
-  owner_id: string;
-  status: string;
-  amount_paid?: number;
-  completed_at?: FirebaseFirestore.Timestamp;
-  start_time?: FirebaseFirestore.Timestamp;
-  end_time?: FirebaseFirestore.Timestamp;
+interface SettlementTransactionData {
+  owner_id?: string;
+  type?: string;
+  booking_id?: string;
+  gross_amount?: number;
+  platform_fee?: number;
+  host_earning?: number;
+  created_at?: FirebaseFirestore.Timestamp;
   vehicle_id?: string;
 }
 
@@ -44,7 +39,9 @@ interface RevenueBreakdown {
 
 interface BookingSummary {
   bookingId: string;
-  amountPaid: number;
+  grossAmount: number;
+  platformFee: number;
+  hostEarning: number;
   completedAt: string | null;
   vehicleId: string | null;
 }
@@ -86,7 +83,7 @@ export const getHostRevenue = functions.https.onCall(
     }
 
     // Authorization: user can only view their own revenue (unless admin)
-    const isAdmin = context.auth.token?.admin === true;
+    const isAdmin = context.auth.token?.role === 'admin';
     if (context.auth.uid !== hostId && !isAdmin) {
       throw new functions.https.HttpsError(
         'permission-denied',
@@ -97,70 +94,64 @@ export const getHostRevenue = functions.https.onCall(
     try {
       const db = admin.firestore();
 
-      // Build query for completed bookings owned by host
-      let query: FirebaseFirestore.Query = db
-        .collection('bookings')
+      // Read host transactions and filter to settlement events in memory.
+      // This avoids requiring new composite indexes during development.
+      const snapshot = await db
+        .collection('transactions')
         .where('owner_id', '==', hostId)
-        .where('status', '==', BookingStatus.COMPLETED);
+        .get();
 
-      // Apply date filters if provided
       let dateRangeApplied: { startDate: string; endDate: string } | undefined;
-
+      const start = startDate ? new Date(startDate) : null;
+      const end = endDate ? new Date(endDate) : null;
       if (startDate || endDate) {
-        const start = startDate
-          ? admin.firestore.Timestamp.fromDate(new Date(startDate))
-          : null;
-        const end = endDate
-          ? admin.firestore.Timestamp.fromDate(new Date(endDate))
-          : null;
-
-        if (start) {
-          query = query.where('completed_at', '>=', start);
-        }
-        if (end) {
-          query = query.where('completed_at', '<=', end);
-        }
-
         dateRangeApplied = {
           startDate: startDate || 'unbounded',
           endDate: endDate || 'unbounded',
         };
       }
 
-      // Execute query
-      const snapshot = await query.get();
-
       // Aggregate revenue
       let gross = 0;
+      let platformCommission = 0;
+      let net = 0;
       const bookings: BookingSummary[] = [];
 
       snapshot.docs.forEach((doc) => {
-        const booking = doc.data() as BookingData;
-        const amountPaid = booking.amount_paid || 0;
+        const tx = doc.data() as SettlementTransactionData;
+        if (tx.type !== TransactionType.FUNDS_SETTLED) return;
 
-        gross += amountPaid;
+        const settledAt = tx.created_at?.toDate();
+        if (start && settledAt && settledAt < start) return;
+        if (end && settledAt && settledAt > end) return;
+
+        const txGross = Number(tx.gross_amount ?? 0);
+        const txPlatformFee = Number(tx.platform_fee ?? 0);
+        const txHostEarning = Number(tx.host_earning ?? 0);
+
+        gross += txGross;
+        platformCommission += txPlatformFee;
+        net += txHostEarning;
 
         bookings.push({
-          bookingId: doc.id,
-          amountPaid,
-          completedAt: booking.completed_at?.toDate().toISOString() || null,
-          vehicleId: booking.vehicle_id || null,
+          bookingId: tx.booking_id || doc.id,
+          grossAmount: roundToTwoDecimals(txGross),
+          platformFee: roundToTwoDecimals(txPlatformFee),
+          hostEarning: roundToTwoDecimals(txHostEarning),
+          completedAt: settledAt?.toISOString() || null,
+          vehicleId: tx.vehicle_id || null,
         });
       });
-
-      // Calculate commission and net
-      const platformCommission = roundToTwoDecimals(gross * PLATFORM_COMMISSION_RATE);
-      const net = roundToTwoDecimals(gross - platformCommission);
 
       const response: HostRevenueResponse = {
         hostId,
         revenue: {
           gross: roundToTwoDecimals(gross),
-          platformCommission,
-          net,
+          platformCommission: roundToTwoDecimals(platformCommission),
+          net: roundToTwoDecimals(net),
           commissionRate: PLATFORM_COMMISSION_RATE,
         },
-        completedBookingsCount: snapshot.size,
+        completedBookingsCount: bookings.length,
         bookings,
         calculatedAt: new Date().toISOString(),
       };
