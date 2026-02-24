@@ -1,4 +1,5 @@
 import 'package:car_listing_app/screens/auth/welcome_screen.dart';
+import 'package:car_listing_app/screens/driver/driver_home_screen.dart';
 import 'package:car_listing_app/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +8,7 @@ import '../../theme/app_colors.dart';
 import '../main_navigation.dart';
 import 'signup_screen.dart';
 import 'phone_login_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -140,12 +142,31 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
 
                       if (result.user != null) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MainNavigation(),
-                          ),
-                        );
+                        final uid = result.user!.uid;
+
+                        final doc =
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(uid)
+                                .get();
+
+                        if (doc.exists && doc.data()?['role'] == 'Driver') {
+                          // Navigate to Driver portal
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DriverHomeScreen(),
+                            ),
+                          );
+                        } else {
+                          // Normal user navigation
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const MainNavigation(),
+                            ),
+                          );
+                        }
                       }
                     } catch (e) {
                       ScaffoldMessenger.of(
@@ -153,6 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ).showSnackBar(SnackBar(content: Text(e.toString())));
                     }
                   },
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     foregroundColor: AppColors.lightText,
@@ -165,8 +187,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
 
               SizedBox(height: screenHeight * 0.02),
-              // GOOGLE LOGIN BUTTON 
-               // login in with phone button
+              // GOOGLE LOGIN BUTTON
+              // login in with phone button
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
@@ -175,7 +197,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(27),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
                   ),
                   onPressed: () {
                     Navigator.push(
@@ -197,7 +222,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       Center(
-                        child: Text("Continue with Phone", style: TextStyle(fontSize: 14)),
+                        child: Text(
+                          "Continue with Phone",
+                          style: TextStyle(fontSize: 14),
+                        ),
                       ),
                     ],
                   ),
@@ -214,7 +242,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(27),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
                   ),
                   onPressed: () {
                     // Navigator.push(
@@ -230,13 +261,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: SvgPicture.asset(
-                        'lib/assets/google.svg',
-                        height: 30,
-                        width: 30,
-                      ),
+                          'lib/assets/google.svg',
+                          height: 30,
+                          width: 30,
+                        ),
                       ),
                       Center(
-                        child: Text("Continue with Google", style: TextStyle(fontSize: 14)),
+                        child: Text(
+                          "Continue with Google",
+                          style: TextStyle(fontSize: 14),
+                        ),
                       ),
                     ],
                   ),

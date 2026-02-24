@@ -5,6 +5,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
 import '../main_navigation.dart';
+import 'package:car_listing_app/screens/auth/login_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -24,6 +25,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  bool _isDriverSignup = false;
 
   @override
   void dispose() {
@@ -36,72 +38,66 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _signUp() async {
-    // Validate form
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      // Create user with email and password
-      final userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      final userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
 
-      // Save additional user data to Firestore
       if (userCredential.user != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .set({
+        final uid = userCredential.user!.uid;
+
+        Map<String, dynamic> userData = {
           'name': _nameController.text.trim(),
           'email': _emailController.text.trim(),
           'phone': _phoneController.text.trim(),
           'createdAt': FieldValue.serverTimestamp(),
-        });
+        };
 
-        // Navigate to main navigation
+        // If driver toggle is on, add role field
+        if (_isDriverSignup) {
+          userData['role'] = 'Driver';
+        }
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .set(userData);
+
+        // Navigate to login screen after signup
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(
-              builder: (_) => const MainNavigation(),
-            ),
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
         }
       }
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'An error occurred';
       if (e.code == 'weak-password') {
-        errorMessage = 'The password provided is too weak';
+        errorMessage = 'Password too weak';
       } else if (e.code == 'email-already-in-use') {
-        errorMessage = 'An account already exists for this email';
+        errorMessage = 'Email already in use';
       } else if (e.code == 'invalid-email') {
-        errorMessage = 'Invalid email address';
+        errorMessage = 'Invalid email';
       }
+
       _showError(errorMessage);
     } catch (e) {
       _showError('Failed to create account. Please try again.');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -141,6 +137,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   style: AppTextStyles.meta(context),
                 ),
                 const SizedBox(height: AppSpacing.xl),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Driver',
+                      style: AppTextStyles.body(context).copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryText,
+                      ),
+                    ),
+                    Switch(
+                      value: _isDriverSignup,
+                      activeColor: AppColors.accent,
+                      onChanged: (value) {
+                        setState(() {
+                          _isDriverSignup = value;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
 
                 // Name Field
                 _buildTextField(
@@ -232,21 +250,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+                    child:
+                        _isLoading
+                            ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                            : Text(
+                              'Sign Up',
+                              style: AppTextStyles.button(
+                                context,
+                              ).copyWith(color: Colors.white),
                             ),
-                          )
-                        : Text(
-                            'Sign Up',
-                            style: AppTextStyles.button(context).copyWith(
-                              color: Colors.white,
-                            ),
-                          ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -311,23 +330,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.red, width: 2),
         ),
-        prefixIcon: Icon(
-          icon,
-          color: AppColors.secondaryText,
-          size: 20,
-        ),
-        suffixIcon: isPassword
-            ? IconButton(
-                icon: Icon(
-                  obscureText
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  color: AppColors.secondaryText,
-                  size: 20,
-                ),
-                onPressed: onToggleVisibility,
-              )
-            : null,
+        prefixIcon: Icon(icon, color: AppColors.secondaryText, size: 20),
+        suffixIcon:
+            isPassword
+                ? IconButton(
+                  icon: Icon(
+                    obscureText
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: AppColors.secondaryText,
+                    size: 20,
+                  ),
+                  onPressed: onToggleVisibility,
+                )
+                : null,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.sm,
           vertical: AppSpacing.sm,

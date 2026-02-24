@@ -1,3 +1,4 @@
+import 'package:car_listing_app/screens/driver/driver_home_screen.dart';
 import 'package:car_listing_app/screens/home_screen.dart';
 import 'package:car_listing_app/screens/host/host_home_screen.dart';
 import 'package:car_listing_app/screens/host_navigation.dart';
@@ -75,7 +76,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         textTheme: GoogleFonts.interTextTheme(),
       ),
       //home: const HostNavigation(),
-      home: const MainNavigation(),
+      home: const DriverHomeScreen(),
       //home: const WelcomeScreen(),
     );
   }
