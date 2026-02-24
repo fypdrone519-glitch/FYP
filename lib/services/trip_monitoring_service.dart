@@ -16,17 +16,18 @@ class TripMonitoringService {
   /// Start monitoring user's bookings for approved trips
   void startMonitoring() {
     if (_isMonitoring) {
-      //print('Trip monitoring already started');
+      print('Trip monitoring already started for user: ${FirebaseAuth.instance.currentUser?.uid}');
       return;
     }
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      //print('No user logged in');
+      print('No user logged in');
       return;
     }
 
-    //print('Starting trip monitoring for user: ${user.uid}');
+    print('Starting trip monitoring for user: ${user.uid}');
+    //print("calling _checkactivetrips for user: ${user.uid}");
 
     // Listen to all bookings where user is the renter
     _bookingsSubscription = FirebaseFirestore.instance
@@ -42,37 +43,34 @@ class TripMonitoringService {
 
   /// Check if there are any active (approved) trips
   void _checkForActiveTrips(List<QueryDocumentSnapshot> bookings) {
-    final now = DateTime.now();
+    print('Checking for active trips among ${bookings.length} bookings');
     bool hasActiveTrip = false;
     String? activeBookingId;
 
     for (final doc in bookings) {
       final data = doc.data() as Map<String, dynamic>;
       final status = (data['status'] as String?)?.trim().toLowerCase();
-      final startTime = (data['start_time'] as Timestamp?)?.toDate();
-      final endTime = (data['end_time'] as Timestamp?)?.toDate();
 
-      // Check if trip is approved and currently active
-      if (status == 'approved' && startTime != null && endTime != null) {
-        if (now.isAfter(startTime) && now.isBefore(endTime)) {
-          hasActiveTrip = true;
-          activeBookingId = doc.id;
-          //print('Active trip found: ${doc.id}');
-          break;
-        }
+      // Track location only when trip is explicitly started.
+      if (status == 'started') {
+        hasActiveTrip = true;
+        activeBookingId = doc.id;
+        break;
       }
     }
+    print('Active trip status: $hasActiveTrip, Booking ID: $activeBookingId');
 
     // Start or stop location tracking based on active trip status
     if (hasActiveTrip) {
+      print('Active trip found (booking ID: $activeBookingId), starting location tracking');
       if (!_locationService.isTracking) {
-        //print('Starting location tracking for active trip');
+        print('Starting location tracking for active trip');
         _locationService.startLocationTracking();
         _activeBookingId = activeBookingId;
       }
     } else {
       if (_locationService.isTracking) {
-        //print('No active trip, stopping location tracking');
+        print('No active trip, stopping location tracking');
         _locationService.stopLocationTracking();
         _activeBookingId = null;
       }

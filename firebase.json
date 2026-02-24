@@ -34,7 +34,10 @@
         "firebase-debug.*.log",
         "*.local"
       ],
-      "runtime": "nodejs20"
+      "runtime": "nodejs22"
     }
-  ]
+  ],
+  "firestore": {
+    "indexes": "firestore.indexes.json"
+  }
 }

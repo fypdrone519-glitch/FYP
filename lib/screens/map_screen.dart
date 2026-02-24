@@ -8,6 +8,7 @@ import '../theme/app_spacing.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 
 class MapsScreen extends StatefulWidget {
   const MapsScreen({super.key});
@@ -17,6 +18,8 @@ class MapsScreen extends StatefulWidget {
 }
 
 class _MapsScreenState extends State<MapsScreen> {
+  // Fallback location — change to your preferred city center
+  static const LatLng _defaultLocation = LatLng(33.6844, 73.0479); // Rawalpindi
   GoogleMapController? _mapController;
   final CarouselSliderController _carouselController =
       CarouselSliderController();
@@ -27,6 +30,40 @@ class _MapsScreenState extends State<MapsScreen> {
   void initState() {
     super.initState();
     _loadCars();
+    // _getUserLocation();
+  }
+
+  Future<void> _getUserLocation() async {
+    //print('Attempting to get user location...');
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      //print('Location permission status: $permission');
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) {
+        // Fall back to default location
+        _moveCameraTo(_defaultLocation);
+        return;
+      }
+
+      final Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      //print('User location obtained: ${position.latitude}, ${position.longitude}');
+
+      _moveCameraTo(LatLng(position.latitude, position.longitude));
+    } catch (e) {
+      // Any error → fall back to default
+      _moveCameraTo(_defaultLocation);
+    }
+  }
+
+  void _moveCameraTo(LatLng target) {
+    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(target, 13));
   }
 
   Future<String> _getaddressFromLatLng(
@@ -167,30 +204,31 @@ class _MapsScreenState extends State<MapsScreen> {
     }
   }
 
-void _openCarSheet(Car car) {
-  Navigator.of(context).push(
-    PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => CarDetails(
-        vehicleId: car.id,
-        fromMap: true,
+  void _openCarSheet(Car car) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder:
+            (context, animation, secondaryAnimation) =>
+                CarDetails(vehicleId: car.id, fromMap: true),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0); // Start from bottom
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+
+          var tween = Tween(
+            begin: begin,
+            end: end,
+          ).chain(CurveTween(curve: curve));
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
       ),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(0.0, 1.0); // Start from bottom
-        const end = Offset.zero;
-        const curve = Curves.easeInOut;
+    );
+  }
 
-        var tween = Tween(begin: begin, end: end).chain(
-          CurveTween(curve: curve),
-        );
-
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
-      },
-    ),
-  );
-}
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -202,7 +240,7 @@ void _openCarSheet(Car car) {
     if (_cars.isEmpty) {
       return Scaffold(
         body: Center(
-          child: Column(  
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.car_rental, size: 64, color: Colors.grey),
@@ -225,6 +263,7 @@ void _openCarSheet(Car car) {
             onBoundsChanged: (_) {},
             onMapReady: (controller) {
               _mapController = controller;
+              _getUserLocation();
             },
             selectedCarId: _cars[_currentIndex].id,
           ),

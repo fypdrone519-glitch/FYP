@@ -44,9 +44,8 @@ class ReviewKycScreen extends StatelessWidget {
                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent),
                       onPressed: () async {
                         try {
-                          // Set verification_status to "VERIFIED" after all KYC steps are complete
-                          // This includes: personal info, phone/email OTP, biometric auth, selfie, and documents
-                          await service.updateVerificationStatus("VERIFIED");
+                          // Submit KYC for admin review.
+                          await service.updateVerificationStatus("pending");
 
                           if (context.mounted) {
                             Navigator.push(

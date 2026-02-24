@@ -5,6 +5,7 @@
 
 export {
   BookingStatus,
+  PLATFORM_COMMISSION_RATE,
   TransactionType,
   TransactionStatus,
   isValidBookingStatus,
@@ -16,6 +17,7 @@ export {
   StorageValidationError,
   StorageErrorCode,
   validateStartVideoExists,
+  validateHostStartVideoExists,
   validateEndPhotosExist,
   validateReturnVideoExists, // NEW: Export the return video validation
   validateStartVideoUploadPermission,

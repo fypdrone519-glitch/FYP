@@ -11,8 +11,9 @@
  * Represents all possible states of a booking throughout its lifecycle.
  */
 export enum BookingStatus {
-  REQUESTED = 'requested',
-  APPROVED = 'approved',
+  PENDING_ADMIN_APPROVAL = 'pending_admin_approval',
+  ADMIN_APPROVED = 'admin_approved',
+  HOST_APPROVED = 'host_approved',
   STARTED = 'started',
   ENDED = 'ended',
   COMPLETED = 'completed',
@@ -26,7 +27,15 @@ export enum TransactionType {
   BOOKING_STARTED = 'booking_started',
   BOOKING_ENDED = 'booking_ended',
   BOOKING_COMPLETED = 'booking_completed',
+  FUNDS_RECEIVED = 'funds_received',
+  FUNDS_SETTLED = 'funds_settled',
 }
+
+/**
+ * Platform commission rate applied at settlement.
+ * Example: 0.20 means 20% platform fee, 80% host earning.
+ */
+export const PLATFORM_COMMISSION_RATE = 0.20;
 
 /**
  * Status of a transaction record.

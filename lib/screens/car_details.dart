@@ -4,6 +4,7 @@ import 'package:car_listing_app/screens/car_booking_screen.dart';
 import 'package:car_listing_app/screens/chat_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:car_listing_app/services/user_behavior_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
@@ -40,6 +41,12 @@ class _CarDetailsState extends State<CarDetails> {
   void initState() {
     super.initState();
     _loadVehicleData();
+    _logVehicleView();
+  }
+
+  Future<void> _logVehicleView() async {
+    //print('Logging vehicle view for vehicle ID: ${widget.vehicleId}');
+    await UserBehaviorService.instance.logVehicleView(widget.vehicleId);
   }
 
   //load dates from the firebase

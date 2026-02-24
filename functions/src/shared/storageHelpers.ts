@@ -41,6 +41,13 @@ export const StoragePaths = {
     `bookings/${bookingId}/start/renter_walkaround.mp4`,
 
   /**
+   * Path for host's walkaround video at booking start.
+   * Only the host may upload this file.
+   */
+  hostStartVideo: (bookingId: string) =>
+    `bookings/${bookingId}/start/host_walkaround.mp4`,
+
+  /**
    * Path for host's photo at booking end.
    * Only the host may upload these files.
    * @param n - Photo number (1-indexed)
@@ -83,6 +90,29 @@ export async function validateStartVideoExists(bookingId: string): Promise<boole
   if (!exists) {
     throw new StorageValidationError(
       `Start video not found for booking ${bookingId}. Expected at: ${filePath}`,
+      StorageErrorCode.FILE_NOT_FOUND
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Validates that the host's start walkaround video exists for a booking.
+ * @param bookingId - The booking ID
+ * @returns true if the video exists
+ * @throws StorageValidationError if the video does not exist
+ */
+export async function validateHostStartVideoExists(bookingId: string): Promise<boolean> {
+  const bucket = admin.storage().bucket();
+  const filePath = StoragePaths.hostStartVideo(bookingId);
+  const file = bucket.file(filePath);
+
+  const [exists] = await file.exists();
+
+  if (!exists) {
+    throw new StorageValidationError(
+      `Host start video not found for booking ${bookingId}. Expected at: ${filePath}`,
       StorageErrorCode.FILE_NOT_FOUND
     );
   }

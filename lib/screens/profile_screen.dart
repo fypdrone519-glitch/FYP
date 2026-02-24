@@ -27,13 +27,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final doc =
         await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
+      //print("Fetched user document for verification status: ${doc.data()}"); // Debug print
+
     if (doc.exists) {
       setState(() {
-        verificationStatus = doc.data()?['verification_status'] ?? "unverified";
+        verificationStatus =
+            (doc.data()?['verification_status'] ?? "unverified")
+                .toString()
+                .trim()
+                .toLowerCase();
         //print(verificationStatus);
       });
+      //print("Verification status loaded: $verificationStatus"); 
     }
   }
+
   Future<void> loadname() async {
     //print("loading name");
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -63,7 +71,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // CRITICAL: Stop unread message listeners before signing out
       // This prevents memory leaks and invalid Firestore queries after logout
       UnreadMessageService().stopListening();
-      
+
       await FirebaseAuth.instance.signOut();
 
       // Navigate to login screen and remove all previous routes
@@ -211,7 +219,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       TextButton(
                         onPressed: () {
-                          if (verificationStatus != "VERIFIED") {
+                          if (verificationStatus != "verified") {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -229,13 +237,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         child: Text(
-                          verificationStatus == "VERIFIED"
+                          verificationStatus == "verified"
                               ? "Verified"
+                              : verificationStatus == "rejected"
+                              ? "Rejected"
                               : "Not Verified",
                           style: TextStyle(
                             color:
-                                verificationStatus == "VERIFIED"
+                                verificationStatus == "verified"
                                     ? Colors.blue
+                                    : verificationStatus == "rejected"
+                                    ? Colors.red
                                     : Colors.orange,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,

@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import {sendPushNotification} from './helpers';
 import {BookingData} from './types';
+import { BookingStatus } from '../shared';
 
 /**
  * Scheduled function that runs every hour to check for bookings starting today
@@ -20,12 +21,12 @@ export const sendBookingReminders = functions.pubsub
 
       //console.log(`📅 Checking bookings for ${todayStart.toISOString().split('T')[0]}`);
 
-      // Query bookings that start today and are approved and not cancelled
+      // Query bookings that start today and are host approved and not cancelled
       const bookingsSnapshot = await admin.firestore()
         .collection('bookings')
         .where('start_time', '>=', admin.firestore.Timestamp.fromDate(todayStart))
         .where('start_time', '<=', admin.firestore.Timestamp.fromDate(todayEnd))
-        .where('status', '==', 'APPROVED')
+        .where('status', '==', BookingStatus.HOST_APPROVED)
         .get();
 
       if (bookingsSnapshot.empty) {

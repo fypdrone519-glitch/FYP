@@ -4,11 +4,12 @@ import 'package:car_listing_app/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../theme/app_colors.dart';
 import '../main_navigation.dart';
 import 'signup_screen.dart';
 import 'phone_login_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,20 +30,51 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _login() async {
+    try {
+      final result = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (result.user != null) {
+        final uid = result.user!.uid;
+
+        final doc =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+        if (doc.exists && doc.data()?['role'] == 'Driver') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const DriverHomeScreen()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainNavigation()),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: AppColors.cardSurface,
       body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: screenHeight * 0.02),
+              const SizedBox(height: 20),
 
               IconButton(
                 onPressed: () {
@@ -52,44 +84,42 @@ class _LoginScreenState extends State<LoginScreen> {
                   );
                 },
                 icon: const Icon(Icons.arrow_back),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
               ),
 
-              SizedBox(height: screenHeight * 0.04),
+              const SizedBox(height: 30),
 
               Text(
-                'Let\'s Sign you in.',
+                "Let's Sign you in.",
                 style: TextStyle(
                   fontSize: screenHeight * 0.036,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
                 ),
               ),
 
-              SizedBox(height: screenHeight * 0.015),
+              const SizedBox(height: 10),
 
               Text(
-                'Welcome back',
-                style: TextStyle(
-                  fontSize: screenHeight * 0.022,
-                  color: Colors.grey[600],
-                ),
-              ),
-              Text(
-                'You\'ve been missed!',
+                "Welcome back",
                 style: TextStyle(
                   fontSize: screenHeight * 0.022,
                   color: Colors.grey[600],
                 ),
               ),
 
-              SizedBox(height: screenHeight * 0.05),
+              Text(
+                "You've been missed!",
+                style: TextStyle(
+                  fontSize: screenHeight * 0.022,
+                  color: Colors.grey[600],
+                ),
+              ),
+
+              const SizedBox(height: 40),
 
               TextField(
                 controller: _emailController,
                 decoration: InputDecoration(
-                  hintText: 'Email, phone or username',
+                  hintText: "Email",
                   hintStyle: AppTextStyles.meta(context),
                   filled: true,
                   fillColor: Colors.grey[100],
@@ -100,13 +130,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              SizedBox(height: screenHeight * 0.02),
+              const SizedBox(height: 16),
 
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
-                  hintText: 'Password',
+                  hintText: "Password",
                   hintStyle: AppTextStyles.meta(context),
                   filled: true,
                   fillColor: Colors.grey[100],
@@ -127,54 +157,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              const Spacer(),
-              // LOGIN BUTTON
+              const SizedBox(height: 30),
+
               SizedBox(
                 width: double.infinity,
-                height: screenHeight * 0.07,
+                height: 55,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      final result = await FirebaseAuth.instance
-                          .signInWithEmailAndPassword(
-                            email: _emailController.text.trim(),
-                            password: _passwordController.text.trim(),
-                          );
-
-                      if (result.user != null) {
-                        final uid = result.user!.uid;
-
-                        final doc =
-                            await FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(uid)
-                                .get();
-
-                        if (doc.exists && doc.data()?['role'] == 'Driver') {
-                          // Navigate to Driver portal
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const DriverHomeScreen(),
-                            ),
-                          );
-                        } else {
-                          // Normal user navigation
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const MainNavigation(),
-                            ),
-                          );
-                        }
-                      }
-                    } catch (e) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  },
-
+                  onPressed: _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     foregroundColor: AppColors.lightText,
@@ -186,9 +175,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              SizedBox(height: screenHeight * 0.02),
-              // GOOGLE LOGIN BUTTON
-              // login in with phone button
+              const SizedBox(height: 20),
+
+              /// Phone Login
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
@@ -196,10 +185,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     side: BorderSide(color: AppColors.accent),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(27),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
                     ),
                   ),
                   onPressed: () {
@@ -210,30 +195,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     );
                   },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Icon(
-                          Icons.phone,
-                          size: screenHeight * 0.025,
-                          color: AppColors.accent,
-                        ),
-                      ),
-                      Center(
-                        child: Text(
-                          "Continue with Phone",
-                          style: TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    ],
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text("Continue with Phone"),
                   ),
                 ),
               ),
 
-              SizedBox(height: screenHeight * 0.025),
-              // login in with Google button
+              const SizedBox(height: 16),
+
+              /// Google Button
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
@@ -242,54 +213,34 @@ class _LoginScreenState extends State<LoginScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(27),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
                   ),
-                  onPressed: () {
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //     builder: (_) => const PhoneLoginScreen(),
-                    //   ),
-                    // );
-                  },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: SvgPicture.asset(
-                          'lib/assets/google.svg',
-                          height: 30,
-                          width: 30,
-                        ),
-                      ),
-                      Center(
-                        child: Text(
+                  onPressed: () {},
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SvgPicture.asset('lib/assets/google.svg', height: 24),
+                        const SizedBox(width: 10),
+                        const Text(
                           "Continue with Google",
                           style: TextStyle(fontSize: 14),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
 
-              SizedBox(height: screenHeight * 0.025),
+              const SizedBox(height: 30),
 
-              // REGISTER LINK — restored
               Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Don\'t have an account? ',
-                      style: TextStyle(
-                        fontSize: screenHeight * 0.018,
-                        color: Colors.grey[600],
-                      ),
+                      "Don't have an account? ",
+                      style: TextStyle(color: Colors.grey[600]),
                     ),
                     GestureDetector(
                       onTap: () {
@@ -301,9 +252,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         );
                       },
                       child: Text(
-                        'Register',
+                        "Register",
                         style: TextStyle(
-                          fontSize: screenHeight * 0.018,
                           color: AppColors.accent,
                           fontWeight: FontWeight.bold,
                         ),
@@ -313,7 +263,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              SizedBox(height: screenHeight * 0.03),
+              const SizedBox(height: 30),
             ],
           ),
         ),

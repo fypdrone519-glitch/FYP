@@ -10,7 +10,6 @@ import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
 
 class EditCarScreen extends StatefulWidget {
- 
   final String vehicleId;
   final Map<String, dynamic> vehicleData;
 
@@ -18,7 +17,6 @@ class EditCarScreen extends StatefulWidget {
     super.key,
     required this.vehicleId,
     required this.vehicleData,
-    
   });
 
   @override
@@ -30,11 +28,24 @@ class _EditCarScreenState extends State<EditCarScreen> {
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _contactController = TextEditingController();
-  final TextEditingController _carRegistrationController = TextEditingController();
+  final TextEditingController _carRegistrationController =
+      TextEditingController();
   final TextEditingController _carAbilityController = TextEditingController();
   final TextEditingController _rentPerDayController = TextEditingController();
 
   // State variables
+  String _selectedVehicleType = '';
+  // List of vehicle types for the grid
+  final List<String> _vehicleTypes = [
+    'SUV',
+    'Sedan',
+    'Hatchback',
+    'Crossover',
+    'Coupe',
+    'Convertible',
+    'Pickup Truck',
+    'Minivan/MPV',
+  ];
   String? _transmissionType;
   Set<String> _drivingOptions = {};
   Set<String> _selectedFeatures = {};
@@ -45,7 +56,7 @@ class _EditCarScreenState extends State<EditCarScreen> {
   bool _termsAccepted = true; // Pre-checked for edit
   int _characterCount = 0;
   final int _maxCharacters = 1000;
-  
+
   // Location variables
   LatLng? carLocation;
   GoogleMapController? _mapController;
@@ -57,17 +68,29 @@ class _EditCarScreenState extends State<EditCarScreen> {
   // Image selection variable
   List<File> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
-  
+
   // Firebase instances
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  
+
   // Loading state
   bool _isSubmitting = false;
 
   // Car brands data
-  final List<String> regularBrands = ['Changan', 'Honda', 'Toyota', 'Nissan', 'Mercedes'];
-  final List<String> luxuryBrands = ['BMW', 'Ferrari', 'Bentley', 'Maybach', 'Lamborghini'];
+  final List<String> regularBrands = [
+    'Changan',
+    'Honda',
+    'Toyota',
+    'Nissan',
+    'Mercedes',
+  ];
+  final List<String> luxuryBrands = [
+    'BMW',
+    'Ferrari',
+    'Bentley',
+    'Maybach',
+    'Lamborghini',
+  ];
 
   // Colors data
   final List<Map<String, dynamic>> colors = [
@@ -96,9 +119,11 @@ class _EditCarScreenState extends State<EditCarScreen> {
     _fullNameController.text = widget.vehicleData['car_name'] ?? '';
     _emailController.text = widget.vehicleData['owner_email'] ?? '';
     _contactController.text = widget.vehicleData['owner_contact'] ?? '';
-    _carRegistrationController.text = widget.vehicleData['registration_number'] ?? '';
+    _carRegistrationController.text =
+        widget.vehicleData['registration_number'] ?? '';
     _carAbilityController.text = widget.vehicleData['description'] ?? '';
-    _rentPerDayController.text = widget.vehicleData['rent_per_day']?.toString() ?? '';
+    _rentPerDayController.text =
+        widget.vehicleData['rent_per_day']?.toString() ?? '';
 
     // Load selections
     _selectedBrand = widget.vehicleData['make'];
@@ -106,11 +131,16 @@ class _EditCarScreenState extends State<EditCarScreen> {
     _selectedFuelType = widget.vehicleData['fuel_type'] ?? 'Diesel';
     _transmissionType = widget.vehicleData['transmissionType'];
 
+    //load categpry
+    _selectedVehicleType = widget.vehicleData['vehicle_type'] ?? '';
+    //print('Loaded vehicle type: $_selectedVehicleType');
+
+
     // Load features
     if (widget.vehicleData['features'] != null) {
       _selectedFeatures = Set<String>.from(widget.vehicleData['features']);
     }
-    print('Loaded features: $_selectedFeatures');
+    //print('Loaded features: $_selectedFeatures');
 
     // Load driving options
     String drivingOptions = widget.vehicleData['driving_options'] ?? '';
@@ -130,7 +160,7 @@ class _EditCarScreenState extends State<EditCarScreen> {
         location['longitude'] ?? 73.0479,
       );
       _currentPosition = carLocation!;
-      
+
       _markers.add(
         Marker(
           markerId: const MarkerId('car_location'),
@@ -176,17 +206,14 @@ class _EditCarScreenState extends State<EditCarScreen> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // App bar
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Edit Car Details',
-                  style: AppTextStyles.h2(context),
-                ),
+                Text('Edit Car Details', style: AppTextStyles.h2(context)),
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
@@ -194,13 +221,14 @@ class _EditCarScreenState extends State<EditCarScreen> {
               ],
             ),
           ),
-          
+
           // Scrollable content
           Expanded(
             child: SingleChildScrollView(
-              physics: _isInteractingWithMap 
-                  ? const NeverScrollableScrollPhysics() 
-                  : const AlwaysScrollableScrollPhysics(),
+              physics:
+                  _isInteractingWithMap
+                      ? const NeverScrollableScrollPhysics()
+                      : const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(AppSpacing.sm),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,18 +241,24 @@ class _EditCarScreenState extends State<EditCarScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   _buildTextField(_contactController, 'Contact'),
                   const SizedBox(height: AppSpacing.sm),
-                  _buildTextField(_carRegistrationController, 'Car Registration Number'),
+                  _buildTextField(
+                    _carRegistrationController,
+                    'Car Registration Number',
+                  ),
                   const SizedBox(height: AppSpacing.md),
-                  _buildTextField(_rentPerDayController, 'Renting Price per day'),
+                  _buildTextField(
+                    _rentPerDayController,
+                    'Renting Price per day',
+                  ),
                   const SizedBox(height: AppSpacing.md),
 
                   _buildSectionTitle('Car information'),
                   const SizedBox(height: AppSpacing.sm),
-                  _buildSegmentedControl(),
+                  _buildCarType(),
                   const SizedBox(height: AppSpacing.sm),
-                  if (_selectedTab == 0) _buildCarBrandSelection(),
+                  _buildCarBrandSelection(),
                   const SizedBox(height: AppSpacing.md),
-                  
+
                   _buildSectionTitle("Location"),
                   const SizedBox(height: AppSpacing.sm),
                   _buildLocation(),
@@ -247,7 +281,6 @@ class _EditCarScreenState extends State<EditCarScreen> {
 
                   // _buildCarAbilityTextArea(),
                   // const SizedBox(height: AppSpacing.md),
-
                   _buildSubmitButton(),
                   const SizedBox(height: AppSpacing.lg),
                 ],
@@ -266,7 +299,7 @@ class _EditCarScreenState extends State<EditCarScreen> {
 
   Widget _buildTextField(TextEditingController controller, String hint) {
     TextInputType keyboardType = TextInputType.text;
-    if (hint.toLowerCase().contains('renting price per day') || 
+    if (hint.toLowerCase().contains('renting price per day') ||
         hint.toLowerCase().contains('contact')) {
       keyboardType = TextInputType.number;
     }
@@ -292,45 +325,108 @@ class _EditCarScreenState extends State<EditCarScreen> {
       ),
     );
   }
-
-  Widget _buildSegmentedControl() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.hostBackground,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _buildTabButton(0, 'Car Brand')),
-          Expanded(child: _buildTabButton(1, 'Car Model')),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabButton(int index, String label) {
-    final isSelected = _selectedTab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTab = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.accent : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? AppColors.white : const Color(0xFF4A4A4A),
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              fontSize: 14,
+  Widget _buildCarType() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Optional: Add a label here if needed, e.g., Text("Vehicle Type")
+        Container(
+          padding: const EdgeInsets.all(4), // Small padding for inner spacing
+          decoration: BoxDecoration(
+            color: AppColors.hostBackground,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: GridView.builder(
+            padding: EdgeInsets.zero,
+            shrinkWrap:
+                true, // Vital for using GridView inside a Column/ListView
+            physics:
+                const NeverScrollableScrollPhysics(), // Disables internal scrolling
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2, // 2 columns wide
+              childAspectRatio:
+                  5.0, // Adjust this to change button height (higher number = shorter button)
+              crossAxisSpacing: 4, // Horizontal space between buttons
+              mainAxisSpacing: 4, // Vertical space between buttons
             ),
+            itemCount: _vehicleTypes.length,
+            itemBuilder: (context, index) {
+              final type = _vehicleTypes[index];
+              final isSelected = _selectedVehicleType == type;
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedVehicleType = type;
+                  });
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.accent : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      type,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color:
+                            isSelected
+                                ? AppColors.white
+                                : const Color(0xFF4A4A4A),
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
-      ),
+      ],
     );
   }
+
+  // Widget _buildSegmentedControl() {
+  //   return Container(
+  //     decoration: BoxDecoration(
+  //       color: AppColors.hostBackground,
+  //       borderRadius: BorderRadius.circular(8),
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         Expanded(child: _buildTabButton(0, 'Car Brand')),
+  //         Expanded(child: _buildTabButton(1, 'Car Model')),
+  //       ],
+  //     ),
+  //   );
+  // }
+
+  // Widget _buildTabButton(int index, String label) {
+  //   final isSelected = _selectedTab == index;
+  //   return GestureDetector(
+  //     onTap: () => setState(() => _selectedTab = index),
+  //     child: Container(
+  //       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+  //       decoration: BoxDecoration(
+  //         color: isSelected ? AppColors.accent : Colors.transparent,
+  //         borderRadius: BorderRadius.circular(8),
+  //       ),
+  //       child: Center(
+  //         child: Text(
+  //           label,
+  //           style: TextStyle(
+  //             color: isSelected ? AppColors.white : const Color(0xFF4A4A4A),
+  //             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+  //             fontSize: 14,
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildCarBrandSelection() {
     return Column(
@@ -338,24 +434,38 @@ class _EditCarScreenState extends State<EditCarScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-          child: Text('Regular Cars Brand', 
-            style: AppTextStyles.body(context).copyWith(fontWeight: FontWeight.w600)),
+          child: Text(
+            'Regular Cars Brand',
+            style: AppTextStyles.body(
+              context,
+            ).copyWith(fontWeight: FontWeight.w600),
+          ),
         ),
         Wrap(
           spacing: AppSpacing.xs,
           runSpacing: AppSpacing.xs,
-          children: regularBrands.map((brand) => _buildBrandChip(brand, false)).toList(),
+          children:
+              regularBrands
+                  .map((brand) => _buildBrandChip(brand, false))
+                  .toList(),
         ),
         const SizedBox(height: AppSpacing.sm),
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-          child: Text('Luxury Cars Brand',
-            style: AppTextStyles.body(context).copyWith(fontWeight: FontWeight.w600)),
+          child: Text(
+            'Luxury Cars Brand',
+            style: AppTextStyles.body(
+              context,
+            ).copyWith(fontWeight: FontWeight.w600),
+          ),
         ),
         Wrap(
           spacing: AppSpacing.xs,
           runSpacing: AppSpacing.xs,
-          children: luxuryBrands.map((brand) => _buildBrandChip(brand, true)).toList(),
+          children:
+              luxuryBrands
+                  .map((brand) => _buildBrandChip(brand, true))
+                  .toList(),
         ),
       ],
     );
@@ -422,7 +532,9 @@ class _EditCarScreenState extends State<EditCarScreen> {
                         markerId: const MarkerId('car_location'),
                         position: position,
                         infoWindow: const InfoWindow(title: 'Car Location'),
-                        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                        icon: BitmapDescriptor.defaultMarkerWithHue(
+                          BitmapDescriptor.hueRed,
+                        ),
                       ),
                     );
                   });
@@ -445,16 +557,21 @@ class _EditCarScreenState extends State<EditCarScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: Center(
-                        child: _isLoadingLocation
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                        child:
+                            _isLoadingLocation
+                                ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.accent,
+                                  ),
+                                )
+                                : const Icon(
+                                  Icons.my_location,
                                   color: AppColors.accent,
+                                  size: 24,
                                 ),
-                              )
-                            : const Icon(Icons.my_location, color: AppColors.accent, size: 24),
                       ),
                     ),
                   ),
@@ -484,7 +601,11 @@ class _EditCarScreenState extends State<EditCarScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.location_on, color: AppColors.accent, size: 16),
+                        const Icon(
+                          Icons.location_on,
+                          color: AppColors.accent,
+                          size: 16,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -542,18 +663,22 @@ class _EditCarScreenState extends State<EditCarScreen> {
             markerId: const MarkerId('car_location'),
             position: carLocation!,
             infoWindow: const InfoWindow(title: 'Car Location'),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueRed,
+            ),
           ),
         );
         _isLoadingLocation = false;
       });
 
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(carLocation!, 15));
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(carLocation!, 15),
+      );
     } catch (e) {
       setState(() => _isLoadingLocation = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error getting location: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
     }
   }
 
@@ -564,35 +689,49 @@ class _EditCarScreenState extends State<EditCarScreen> {
         _buildSectionTitle('Colors'),
         const SizedBox(height: AppSpacing.sm),
         Row(
-          children: colors.map((colorData) {
-            final isSelected = _selectedColor == colorData['name'];
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => setState(() => _selectedColor = colorData['name']),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: colorData['color'],
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected ? AppColors.accent : Colors.grey.shade300,
-                          width: isSelected ? 3 : 1,
+          children:
+              colors.map((colorData) {
+                final isSelected = _selectedColor == colorData['name'];
+                return Expanded(
+                  child: GestureDetector(
+                    onTap:
+                        () =>
+                            setState(() => _selectedColor = colorData['name']),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: colorData['color'],
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color:
+                                  isSelected
+                                      ? AppColors.accent
+                                      : Colors.grey.shade300,
+                              width: isSelected ? 3 : 1,
+                            ),
+                          ),
+                          child:
+                              isSelected
+                                  ? const Icon(
+                                    Icons.check,
+                                    color: AppColors.white,
+                                    size: 24,
+                                  )
+                                  : null,
                         ),
-                      ),
-                      child: isSelected
-                          ? const Icon(Icons.check, color: AppColors.white, size: 24)
-                          : null,
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          colorData['name'],
+                          style: AppTextStyles.meta(context),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(colorData['name'], style: AppTextStyles.meta(context)),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
+                  ),
+                );
+              }).toList(),
         ),
       ],
     );
@@ -607,29 +746,35 @@ class _EditCarScreenState extends State<EditCarScreen> {
         Wrap(
           spacing: AppSpacing.xs,
           runSpacing: AppSpacing.xs,
-          children: fuelTypes.map((fuelType) {
-            final isSelected = _selectedFuelType == fuelType;
-            return GestureDetector(
-              onTap: () => setState(() => _selectedFuelType = fuelType),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.accent : AppColors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border.withOpacity(0.2)),
-                ),
-                child: Text(
-                  fuelType,
-                  style: AppTextStyles.body(context).copyWith(
-                    color: isSelected ? AppColors.white : AppColors.primaryText,
+          children:
+              fuelTypes.map((fuelType) {
+                final isSelected = _selectedFuelType == fuelType;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedFuelType = fuelType),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.accent : AppColors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.border.withOpacity(0.2),
+                      ),
+                    ),
+                    child: Text(
+                      fuelType,
+                      style: AppTextStyles.body(context).copyWith(
+                        color:
+                            isSelected
+                                ? AppColors.white
+                                : AppColors.primaryText,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            );
-          }).toList(),
+                );
+              }).toList(),
         ),
       ],
     );
@@ -685,7 +830,10 @@ class _EditCarScreenState extends State<EditCarScreen> {
             Text(
               title,
               style: AppTextStyles.body(context).copyWith(
-                color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
+                color:
+                    isSelected
+                        ? AppColors.primaryText
+                        : AppColors.secondaryText,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -723,7 +871,10 @@ class _EditCarScreenState extends State<EditCarScreen> {
           vertical: AppSpacing.sm,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.accent.withOpacity(0.2) : Colors.transparent,
+          color:
+              isSelected
+                  ? AppColors.accent.withOpacity(0.2)
+                  : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.accent : const Color(0xFFE0E0E0),
@@ -742,7 +893,10 @@ class _EditCarScreenState extends State<EditCarScreen> {
             Text(
               title,
               style: AppTextStyles.body(context).copyWith(
-                color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
+                color:
+                    isSelected
+                        ? AppColors.primaryText
+                        : AppColors.secondaryText,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -810,7 +964,10 @@ class _EditCarScreenState extends State<EditCarScreen> {
             Text(
               title,
               style: AppTextStyles.body(context).copyWith(
-                color: isSelected ? AppColors.primaryText : AppColors.secondaryText,
+                color:
+                    isSelected
+                        ? AppColors.primaryText
+                        : AppColors.secondaryText,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -832,7 +989,8 @@ class _EditCarScreenState extends State<EditCarScreen> {
         maxLines: 5,
         maxLength: _maxCharacters,
         decoration: InputDecoration(
-          hintText: 'Enter your car ability, durability, etc message here.........',
+          hintText:
+              'Enter your car ability, durability, etc message here.........',
           hintStyle: AppTextStyles.meta(context),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(AppSpacing.sm),
@@ -857,16 +1015,17 @@ class _EditCarScreenState extends State<EditCarScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        child: _isSubmitting
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Text('Update Car', style: AppTextStyles.button(context)),
+        child:
+            _isSubmitting
+                ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+                : Text('Update Car', style: AppTextStyles.button(context)),
       ),
     );
   }
@@ -892,6 +1051,15 @@ class _EditCarScreenState extends State<EditCarScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a location for your car'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if(_selectedVehicleType.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a vehicle type'),
           backgroundColor: Colors.red,
         ),
       );
@@ -923,7 +1091,8 @@ class _EditCarScreenState extends State<EditCarScreen> {
     try {
       // Determine driving options
       String drivingOptions;
-      if (_drivingOptions.contains('Self Driving') && _drivingOptions.contains('With Driver')) {
+      if (_drivingOptions.contains('Self Driving') &&
+          _drivingOptions.contains('With Driver')) {
         drivingOptions = 'Both';
       } else if (_drivingOptions.contains('Self Driving')) {
         drivingOptions = 'Self Driving';
@@ -933,7 +1102,8 @@ class _EditCarScreenState extends State<EditCarScreen> {
         drivingOptions = '';
       }
 
-      double rentPerDay = double.tryParse(_rentPerDayController.text.trim()) ?? 0.0;
+      double rentPerDay =
+          double.tryParse(_rentPerDayController.text.trim()) ?? 0.0;
 
       // Update vehicle data
       final updateData = {
@@ -949,6 +1119,8 @@ class _EditCarScreenState extends State<EditCarScreen> {
         'transmissionType': _transmissionType ?? 'Not specified',
         'color': _selectedColor,
         'fuel_type': _selectedFuelType,
+        'vehicle_type': _selectedVehicleType,
+
         ///'description': _carAbilityController.text.trim(),
         'car_name': _fullNameController.text.trim(),
         'owner_email': _emailController.text.trim(),
@@ -956,7 +1128,10 @@ class _EditCarScreenState extends State<EditCarScreen> {
         'updated_at': FieldValue.serverTimestamp(),
       };
 
-      await _firestore.collection('vehicles').doc(widget.vehicleId).update(updateData);
+      await _firestore
+          .collection('vehicles')
+          .doc(widget.vehicleId)
+          .update(updateData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -982,5 +1157,4 @@ class _EditCarScreenState extends State<EditCarScreen> {
       }
     }
   }
-  
 }

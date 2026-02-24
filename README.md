@@ -76,6 +76,12 @@ lib/
     └── quick_chip.dart      # Quick action chip
 ```
 
+## Documentation
+
+- `USER_BEHAVIOUR.md` - Intent event tracking, storage schema, atomic increments, bucket logic, and weights.
+- `USER_RECOMMENDATION.md` - Recommendation score computation, retrieval flow, ranking formula, and cache schema.
+- `architecture.md` - System-wide technical architecture (booking lifecycle, functions, notifications, and personalization).
+
 ## Dependencies
 
 - `google_fonts`: For Inter font family

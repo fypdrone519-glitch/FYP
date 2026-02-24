@@ -23,6 +23,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { BookingStatus, TransactionType } from '../shared';
+import { requireAdmin } from '../shared/auth';
 
 // ============================================================================
 // Types
@@ -68,24 +69,7 @@ function getCompletionTransactionId(bookingId: string): string {
  * ADMIN ONLY - This is NOT for client use.
  */
 function validateAdminAccess(context: functions.https.CallableContext): void {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      'unauthenticated',
-      'Must be authenticated to call this function',
-      { code: CompleteBookingErrorCode.UNAUTHORIZED }
-    );
-  }
-
-  // Check for admin custom claim
-  const isAdmin = context.auth.token?.admin === true;
-
-  if (!isAdmin) {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'This function can only be called by administrators',
-      { code: CompleteBookingErrorCode.UNAUTHORIZED }
-    );
-  }
+  requireAdmin(context);
 }
 
 // ============================================================================

@@ -49,7 +49,7 @@ class _CarsMapState extends State<CarsMap> {
 
   Future<void> _loadMarkerIcons() async {
     final Map<String, BitmapDescriptor> icons = {};
-    
+
     for (var car in widget.cars) {
       if (car.latitude != null && car.longitude != null) {
         final isSelected = widget.selectedCarId == car.id;
@@ -60,7 +60,7 @@ class _CarsMapState extends State<CarsMap> {
         icons[car.id] = icon;
       }
     }
-    
+
     if (mounted) {
       setState(() {
         _markerIcons = icons;
@@ -87,26 +87,29 @@ class _CarsMapState extends State<CarsMap> {
     setState(() {
       _userLocation = LatLng(position.latitude, position.longitude);
     });
+    //move camera to user's location once fetched
+    _controller?.animateCamera(CameraUpdate.newLatLngZoom(_userLocation!, 13));
   }
 
   Set<Marker> get _markers {
     return widget.cars
         .where((car) => car.latitude != null && car.longitude != null)
-        .map(
-          (car) {
-            final icon = _markerIcons[car.id];
-            final isSelected = widget.selectedCarId == car.id;
-            
-            return Marker(
-              markerId: MarkerId(car.id),
-              position: LatLng(car.latitude!, car.longitude!),
-              icon: icon ?? BitmapDescriptor.defaultMarker,
-              onTap: () => widget.onCarTap(car),
-              alpha: isSelected ? 1.0 : 0.5, // Full opacity for selected, 50% for others
-              anchor: const Offset(0.5, 0.5), // Center the marker
-            );
-          },
-        )
+        .map((car) {
+          final icon = _markerIcons[car.id];
+          final isSelected = widget.selectedCarId == car.id;
+
+          return Marker(
+            markerId: MarkerId(car.id),
+            position: LatLng(car.latitude!, car.longitude!),
+            icon: icon ?? BitmapDescriptor.defaultMarker,
+            onTap: () => widget.onCarTap(car),
+            alpha:
+                isSelected
+                    ? 1.0
+                    : 0.5, // Full opacity for selected, 50% for others
+            anchor: const Offset(0.5, 0.5), // Center the marker
+          );
+        })
         .toSet();
   }
 

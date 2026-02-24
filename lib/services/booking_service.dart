@@ -35,12 +35,12 @@ class BookingService {
     return dates;
   }
 
-  /// Atomically approves a booking and blocks the requested dates
+  /// Atomically marks a booking as host-approved and blocks requested dates.
   ///
   /// This function uses a Firestore transaction to ensure:
   /// 1. All requested dates are available in the vehicle
   /// 2. If available, those dates are removed from availability
-  /// 3. Booking status is updated to APPROVED
+  /// 3. Booking status is updated to host_approved
   /// 4. Everything happens atomically (no race conditions)
   ///
   /// Returns:
@@ -67,12 +67,21 @@ class BookingService {
         }
 
         final bookingData = bookingSnapshot.data()!;
+        final ownerId = bookingData['owner_id'] as String?;
+        if (ownerId == null || ownerId != currentUser.uid) {
+          throw Exception('Only the host can approve this booking');
+        }
 
         // Validate booking status
         final currentStatus =
             (bookingData['status'] as String?)?.trim().toLowerCase();
-        if (currentStatus == 'approved') {
+        if (currentStatus == 'host_approved') {
           throw Exception('Booking is already approved');
+        }
+        if (currentStatus != 'admin_approved') {
+          throw Exception(
+            'Booking must be admin approved before host approval. Current status: ${currentStatus ?? "unknown"}',
+          );
         }
         if (currentStatus == 'cancelled' || currentStatus == 'canceled') {
           throw Exception('Cannot approve a cancelled booking');
@@ -131,7 +140,7 @@ class BookingService {
           throw Exception('Vehicle does not have a valid availability array');
         }
 
-        print('📋 Current vehicle availability: $currentAvailability');
+        //print('📋 Current vehicle availability: $currentAvailability');
 
         // Step 4: Check if ALL requested dates are available
         // requestedDates ⊆ currentAvailability
@@ -143,7 +152,7 @@ class BookingService {
         }
 
         if (unavailableDates.isNotEmpty) {
-          print('❌ Unavailable dates: $unavailableDates');
+          //print('❌ Unavailable dates: $unavailableDates');
           throw Exception(
             'Cannot approve booking: Dates not available: ${unavailableDates.join(", ")}',
           );
@@ -161,9 +170,12 @@ class BookingService {
         // Step 6: Update vehicle availability (atomically)
         transaction.update(vehicleRef, {'availability': updatedAvailability});
 
-        // Step 7: Update booking status to APPROVED (atomically)
+        // Step 7: Update booking status to host_approved (atomically)
         transaction.update(bookingRef, {
-          'status': 'approved',
+          'status': 'host_approved',
+          'host_approved_at': FieldValue.serverTimestamp(),
+          'host_approved_by': currentUser.uid,
+          // Keep compatibility for existing notification flows.
           'approved_at': FieldValue.serverTimestamp(),
           'approved_by': currentUser.uid,
         });
@@ -174,7 +186,7 @@ class BookingService {
 
       return result;
     } on FirebaseException catch (e) {
-      print('❌ Firebase error during approval: ${e.code} - ${e.message}');
+      //print('❌ Firebase error during approval: ${e.code} - ${e.message}');
 
       // Handle specific transaction errors
       if (e.code == 'aborted') {
@@ -189,7 +201,7 @@ class BookingService {
 
       rethrow;
     } catch (e) {
-      print('❌ Error during booking approval: $e');
+      //print('❌ Error during booking approval: $e');
       rethrow;
     }
   }
@@ -204,7 +216,7 @@ class BookingService {
     }
 
     try {
-      final updateData = {
+      final updateData = <String, dynamic>{
         'status': 'rejected',
         'rejected_at': FieldValue.serverTimestamp(),
         'rejected_by': currentUser.uid,
@@ -216,10 +228,10 @@ class BookingService {
 
       await _firestore.collection('bookings').doc(bookingId).update(updateData);
 
-      print('✅ Booking $bookingId rejected successfully');
+      //print('✅ Booking $bookingId rejected successfully');
       return true;
     } catch (e) {
-      print('❌ Error rejecting booking: $e');
+      //print('❌ Error rejecting booking: $e');
       rethrow;
     }
   }
@@ -249,13 +261,13 @@ class BookingService {
 
         // Update booking status to CANCELLED
         transaction.update(bookingRef, {
-          'status': 'cancelled  ',
+          'status': 'cancelled',
           'cancelled_at': FieldValue.serverTimestamp(),
           'cancelled_by': currentUser.uid,
         });
 
-        // If booking was APPROVED, restore availability
-        if (currentStatus == 'approved') {
+        // If booking was host-approved, restore availability
+        if (currentStatus == 'host_approved' || currentStatus == 'approved') {
           final vehicleId = bookingData['vehicle_id'] as String?;
           if (vehicleId != null && vehicleId.isNotEmpty) {
             // Get date range
@@ -275,7 +287,7 @@ class BookingService {
                 endDateStr = endTime.toDate().toIso8601String().split('T')[0];
               } else {
                 // Can't restore if dates are missing
-                print('⚠️ Cannot restore availability: missing dates');
+                //print('⚠️ Cannot restore availability: missing dates');
                 return true;
               }
             }
@@ -306,9 +318,9 @@ class BookingService {
                 'availability': restoredAvailability,
               });
 
-              print(
-                '✅ Availability restored for cancelled booking: $datesToRestore',
-              );
+              // print(
+              //   '✅ Availability restored for cancelled booking: $datesToRestore',
+              // );
             }
           }
         }
@@ -318,7 +330,7 @@ class BookingService {
 
       return result;
     } catch (e) {
-      print('❌ Error cancelling booking: $e');
+      //print('❌ Error cancelling booking: $e');
       rethrow;
     }
   }
@@ -336,7 +348,7 @@ class BookingService {
   Future<bool> completeBooking(String bookingId, {String? completedBy}) async {
     try {
       final updateData = <String, dynamic>{
-        'status': 'Completed',
+        'status': 'completed',
         'completed_at': FieldValue.serverTimestamp(),
       };
 
@@ -350,10 +362,10 @@ class BookingService {
 
       await _firestore.collection('bookings').doc(bookingId).update(updateData);
 
-      print('✅ Booking $bookingId marked as completed');
+      //print('✅ Booking $bookingId marked as completed');
       return true;
     } catch (e) {
-      print('❌ Error completing booking: $e');
+      ///print('❌ Error completing booking: $e');
       rethrow;
     }
   }
@@ -368,11 +380,11 @@ class BookingService {
       final today = DateTime(now.year, now.month, now.day);
       final todayTimestamp = Timestamp.fromDate(today);
 
-      // Find all APPROVED bookings where end_time < today (midnight)
+      // Find all host-approved bookings where end_time < today (midnight)
       final expiredBookings =
           await _firestore
               .collection('bookings')
-              .where('status', isEqualTo: 'APPROVED')
+              .where('status', isEqualTo: 'host_approved')
               .where('end_time', isLessThan: todayTimestamp)
               .get();
 
@@ -386,14 +398,14 @@ class BookingService {
           ); // Automatic completion (no completedBy)
           completedCount++;
         } catch (e) {
-          print('❌ Failed to complete booking ${doc.id}: $e');
+          //print('❌ Failed to complete booking ${doc.id}: $e');
         }
       }
 
-      print('✅ Auto-completed $completedCount bookings');
+      //print('✅ Auto-completed $completedCount bookings');
       return completedCount;
     } catch (e) {
-      print('❌ Error in auto-completion: $e');
+      //print('❌ Error in auto-completion: $e');
       rethrow;
     }
   }

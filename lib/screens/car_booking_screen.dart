@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:car_listing_app/services/user_behavior_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
@@ -59,8 +60,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   String get _drivingOptions => widget.vehicleData['driving_options'] ?? 'Self Driving';
   bool get _canToggleDriver => _drivingOptions == 'Both';
   bool get _onlyWithDriver => _drivingOptions == 'With Driver';
-  // Check if user's KYC verification status is VERIFIED (case-insensitive)
-  bool get isVerified => status?.trim().toUpperCase() == "VERIFIED";
+  // Check if user's KYC verification status is verified (case-insensitive).
+  bool get isVerified => status?.trim().toLowerCase() == "verified";
   bool get isLoading => status == "loading";
 
   // Validation flags for required fields
@@ -1054,8 +1055,9 @@ Widget _buildPayButton() {
                   'owner_id': ownerId,
                   'renter_id': renterId,
                   'booking_type': bookingType,
-                  // Trip status (host must approve)
-                  'status': 'PENDING', // Status will change to APPROVED when host approves
+                  // Trip status progression:
+                  // pending_admin_approval -> admin_approved -> host_approved
+                  'status': 'pending_admin_approval',
                   'renter_full_name': _fullNameController.text.trim(),
                   'renter_contact': _contactController.text.trim(),
                   'renter_email': renterEmail,
@@ -1070,6 +1072,8 @@ Widget _buildPayButton() {
                   'rent_per_day': rentPerDay,
                   'created_at': FieldValue.serverTimestamp(),
                 });
+
+                await UserBehaviorService.instance.logVehicleBooking(vehicleId);
 
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
